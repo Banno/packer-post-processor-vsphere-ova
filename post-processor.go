@@ -27,7 +27,6 @@ type Config struct {
   Password     string `mapstructure:"password"`
   Username     string `mapstructure:"username"`
   VMFolder     string `mapstructure:"vm_folder"`
-  VMName       string `mapstructure:"vm_name"`
 
   tpl *packer.ConfigTemplate
 }
@@ -63,7 +62,6 @@ func (p *PostProcessor) Configure(raws ...interface{}) error {
     "host":          &p.config.Host,
     "password":      &p.config.Password,
     "username":      &p.config.Username,
-    "vm_name":       &p.config.VMName,
     "datastore":     &p.config.Datastore,
     "vm_folder":     &p.config.VMFolder,
   }
