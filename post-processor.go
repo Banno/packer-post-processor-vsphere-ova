@@ -1,4 +1,4 @@
-package vsphere_ova
+package main
 
 import (
   "bytes"
