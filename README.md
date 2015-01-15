@@ -43,7 +43,6 @@ Add the following, filled out correctly to your post-processors and you should e
       "datacenter":"datacenter_name",
       "username":"my_username",
       "password":"my_password",
-      "vm_name": "packer_template",
       "datastore": "datastore_name",
       "vm_folder":"folder_on_datastore"
     }
