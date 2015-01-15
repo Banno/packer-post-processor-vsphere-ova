@@ -133,7 +133,7 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
   ui.Message(fmt.Sprintf("%s", sed_out.String()))
 
   ui.Message("Running sed to replace ide with scsi on VMX")
-  command = exec.Command("sed", "-i", "s/ide0:0.present = \"TRUE\"/scsi0.present = \"TRUE\"\\nscsi0:0.present = \"TRUE\"/", vmx)
+  command = exec.Command("sed", "-i", "s/ide0:0.present = \"TRUE\"/scsi0.present = \"TRUE\"\\nscsi0.virtualDev = \"lsilogic\"\\nscsi0:0.present = \"TRUE\"/", vmx)
   command.Stdout = &sed_out
   command.Stderr = &sed_err
   if err := command.Run(); err != nil {

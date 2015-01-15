@@ -7,6 +7,7 @@ This post-processor will upload a VMDK and vmware template to a datastore on VSp
 Software:
 
   * VMware OVF Tool
+  * GNU sed (with it as "sed" in your path)
   
 Notes:
 
