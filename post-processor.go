@@ -5,6 +5,8 @@ import (
   "fmt"
   "github.com/mitchellh/packer/common"
   "github.com/mitchellh/packer/packer"
+  "github.com/vmware/govmomi"
+  "github.com/vmware/govmomi/find"
   "net/url"
   "net/http"
   "net/http/httputil"
@@ -12,6 +14,8 @@ import (
   "os/exec"
   "os"
   "strings"
+  "errors"
+
 )
 
 var builtins = map[string]string{
@@ -27,9 +31,11 @@ type Config struct {
   Password     string `mapstructure:"password"`
   Username     string `mapstructure:"username"`
   VMFolder     string `mapstructure:"vm_folder"`
+  ESXHost      string `mapstructure:"esx_host"`
 
   tpl *packer.ConfigTemplate
 }
+
 
 type PostProcessor struct {
   config Config
@@ -64,6 +70,7 @@ func (p *PostProcessor) Configure(raws ...interface{}) error {
     "username":      &p.config.Username,
     "datastore":     &p.config.Datastore,
     "vm_folder":     &p.config.VMFolder,
+    "esx_host":      &p.config.ESXHost,
   }
   for key, ptr := range templates {
     if *ptr == "" {
@@ -148,6 +155,9 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
     return nil, false, fmt.Errorf("Failed: %s", err)
   }
 
+  doRegistration(p.config, vmx)
+
+
   ui.Message(fmt.Sprintf("Files are uploaded to vsphere, logic for registration pending"))
 
   return artifact, true, nil
@@ -198,12 +208,64 @@ func doUpload(url string, file string) (err error) {
 
   defer res.Body.Close()
 
-
-
-
-
-
   return nil
+}
+
+func doRegistration(config Config, vmx string) (err error) {
+  
+  sdk_url, err := url.Parse(fmt.Sprintf("https://%s:%s@%s/sdk",
+                       url.QueryEscape(config.Username),
+                       url.QueryEscape(config.Password),
+                       config.Host))
+  if err != nil {
+    return err
+  }
+  
+  client, err := govmomi.NewClient(*sdk_url, true)
+
+  if err != nil {
+    return err
+  }
+
+
+  finder := find.NewFinder(client,false)
+  datacenter,err := finder.DefaultDatacenter()
+  finder.SetDatacenter(datacenter)
+  if err != nil {
+    return err
+  }
+
+  folders, err :=  datacenter.Folders()
+  if err != nil {
+    return err
+  }
+
+  searchIndex := client.SearchIndex()
+  shost, err := searchIndex.FindByDnsName(datacenter, config.ESXHost, false)
+  if err != nil {
+    return err
+  }
+  datastore_string := fmt.Sprintf("[%s] %s/%s.vmtx", config.Datastore, config.VMFolder, strings.TrimSuffix(vmx,".vmx"))
+  split_string := strings.Split(vmx,"/")
+  last := split_string[len(split_string)-1]
+  vm_name := strings.TrimSuffix("vmx",last)
+
+  task, err := folders.VmFolder.RegisterVM(datastore_string,vm_name,true,nil,shost.(*govmomi.HostSystem))
+  if err != nil {
+    return err
+  }
+  info, err := task.WaitForResult(nil)
+  if err != nil {
+    return err
+  }
+
+  if info.State == "success" {
+    return nil
+  } else {
+    return errors.New("Error registering template")
+  }
+
+  
 
 }
 
