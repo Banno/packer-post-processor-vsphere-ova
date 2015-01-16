@@ -120,46 +120,6 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
   vmx  := fmt.Sprintf("%s.vmx",strings.TrimSuffix(ova,".ova"))
 
 
-  ui.Message("Converting the default IDE drive to a SCSI device")
-  ui.Message("Running sed on VMDK")
-  command = exec.Command("sed", "-i", "s/ddb.adapterType = \"ide\"/ddb.adapterType = \"lsilogic\"/", vmdk)
-  var sed_out bytes.Buffer
-  var sed_err bytes.Buffer
-  command.Stderr = &sed_err
-  command.Stdout = &sed_out
-  if err := command.Run(); err != nil {
-    return nil, true, fmt.Errorf("Failed: %s\nStdout: %s\nStderr: %s\n", err, sed_out.String(),sed_err.String())
-  }
-  ui.Message(fmt.Sprintf("%s", sed_out.String()))
-
-  ui.Message("Running sed to replace ide with scsi on VMX")
-  command = exec.Command("sed", "-i", "s/ide0:0.present = \"TRUE\"/scsi0.present = \"TRUE\"\\nscsi0.virtualDev = \"lsilogic\"\\nscsi0:0.present = \"TRUE\"/", vmx)
-  command.Stdout = &sed_out
-  command.Stderr = &sed_err
-  if err := command.Run(); err != nil {
-    return nil, true, fmt.Errorf("Failed: %s\nStdout: %s\nStderr: %s\n", err, sed_out.String(),sed_err.String())
-  }
-  ui.Message(fmt.Sprintf("%s", sed_out.String()))
-
-  ui.Message("Running sed to replace ide filename with scsi filename")
-  command = exec.Command("sed", "-i", "s/ide0:0.fileName/scsi0:0.fileName/", vmx)
-  command.Stdout = &sed_out
-  command.Stderr = &sed_err
-  if err := command.Run(); err != nil {
-    return nil, true, fmt.Errorf("Failed: %s\nStdout: %s\nStderr: %s\n", err, sed_out.String(),sed_err.String())
-  }
-  ui.Message(fmt.Sprintf("%s", sed_out.String()))
-
-  command = exec.Command("sed", "-i", "/^ide0:0/d", vmx)
-  command.Stdout = &sed_out
-  command.Stderr = &sed_err
-  if err := command.Run(); err != nil {
-    return nil, true, fmt.Errorf("Failed: %s\nStdout: %s\nStderr: %s\n", err, sed_out.String(),sed_err.String())
-  }
-  ui.Message(fmt.Sprintf("%s", sed_out.String()))
-
-
-
   ui.Message(fmt.Sprintf("Now going to upload %s and %s to Datastore %s on host %s", vmdk, vmx, p.config.Datastore, p.config.Host))
 
   err := doUpload(fmt.Sprintf("https://%s:%s@%s/folder/%s/%s?dcPath=%s&dsName=%s",
@@ -190,7 +150,7 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 
   ui.Message(fmt.Sprintf("Files are uploaded to vsphere, logic for registration pending"))
 
-  return artifact, false, nil
+  return artifact, true, nil
 }
 
 func doUpload(url string, file string) (err error) {
