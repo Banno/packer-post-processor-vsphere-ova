@@ -158,7 +158,7 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 	}
 	ui.Message("Uploaded and registered to VMware")
 
-	return artifact, true, nil
+  return artifact, false, nil
 }
 
 func doUpload(url string, file string) (err error) {
