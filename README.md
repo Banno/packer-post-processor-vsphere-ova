@@ -43,7 +43,8 @@ Add the following, filled out correctly to your post-processors and you should e
       "username":"my_username",
       "password":"my_password",
       "datastore": "datastore_name",
-      "vm_folder":"folder_on_datastore"
+      "vm_folder":"folder_on_datastore",
+       esx_host": "dns_name_of_esxhost"
     }
 ]
 ```
