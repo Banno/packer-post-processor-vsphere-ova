@@ -15,7 +15,6 @@ import (
   "os"
   "strings"
   "errors"
-
 )
 
 var builtins = map[string]string{
@@ -155,10 +154,12 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
     return nil, false, fmt.Errorf("Failed: %s", err)
   }
 
-  doRegistration(p.config, vmx)
+  err = doRegistration(p.config, vmx)
 
-
-  ui.Message(fmt.Sprintf("Files are uploaded to vsphere, logic for registration pending"))
+  if err != nil {
+    return nil, false, fmt.Errorf("Failed: %s", err)
+  }
+  ui.Message("Uploaded and registered to VMware")
 
   return artifact, true, nil
 }
@@ -248,7 +249,7 @@ func doRegistration(config Config, vmx string) (err error) {
   datastore_string := fmt.Sprintf("[%s] %s/%s.vmtx", config.Datastore, config.VMFolder, strings.TrimSuffix(vmx,".vmx"))
   split_string := strings.Split(vmx,"/")
   last := split_string[len(split_string)-1]
-  vm_name := strings.TrimSuffix("vmx",last)
+  vm_name := strings.TrimSuffix(last,".vmx")
 
   task, err := folders.VmFolder.RegisterVM(datastore_string,vm_name,true,nil,shost.(*govmomi.HostSystem))
   if err != nil {
