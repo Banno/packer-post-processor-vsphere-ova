@@ -31,6 +31,7 @@ type Config struct {
 	Username   string `mapstructure:"username"`
 	VMFolder   string `mapstructure:"vm_folder"`
 	ESXHost    string `mapstructure:"esx_host"`
+	VMNetwork  string `mapstructure:"vm_network"`
 
 	tpl *packer.ConfigTemplate
 }
