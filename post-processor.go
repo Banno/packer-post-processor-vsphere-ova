@@ -3,18 +3,19 @@ package main
 import (
 	"bytes"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"github.com/mitchellh/packer/common"
 	"github.com/mitchellh/packer/packer"
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/find"
+	"github.com/vmware/govmomi/vim25/types"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 var builtins = map[string]string{
@@ -111,15 +112,15 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 	}
 
 	// Sweet, we've got an OVA, Now it's time to make that baby something we can work with.
-	command := exec.Command("ovftool", "--lax", ova, fmt.Sprintf("%s.vmx", strings.TrimSuffix(ova, ".ova")))
+	command := exec.Command("ovftool", "--lax", "--allowExtraConfig", fmt.Sprintf("--extraConfig:ethernet0.networkName=%s", p.config.VMNetwork), ova, fmt.Sprintf("%s.vmx", strings.TrimSuffix(ova, ".ova")))
 
-	var ovftool_out bytes.Buffer
-	command.Stdout = &ovftool_out
+	var ovftoolOut bytes.Buffer
+	command.Stdout = &ovftoolOut
 	if err := command.Run(); err != nil {
-		return nil, false, fmt.Errorf("Failed: %s\nStdout: %s", err, ovftool_out.String())
+		return nil, false, fmt.Errorf("Failed: %s\nStdout: %s", err, ovftoolOut.String())
 	}
 
-	ui.Message(fmt.Sprintf("%s", ovftool_out.String()))
+	ui.Message(fmt.Sprintf("%s", ovftoolOut.String()))
 
 	vmdk := fmt.Sprintf("%s-disk1.vmdk", strings.TrimSuffix(ova, ".ova"))
 	vmx := fmt.Sprintf("%s.vmx", strings.TrimSuffix(ova, ".ova"))
@@ -144,7 +145,7 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 		url.QueryEscape(p.config.Password),
 		p.config.Host,
 		p.config.VMFolder,
-		fmt.Sprintf("%s.vmtx", strings.TrimSuffix(vmx, ".vmx")),
+		vmx,
 		p.config.Datacenter,
 		p.config.Datastore), vmx)
 
@@ -159,7 +160,7 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 	}
 	ui.Message("Uploaded and registered to VMware")
 
-  return artifact, false, nil
+	return artifact, false, nil
 }
 
 func doUpload(url string, file string) (err error) {
@@ -170,7 +171,7 @@ func doUpload(url string, file string) (err error) {
 	}
 	defer data.Close()
 
-	file_info, err := data.Stat()
+	fileInfo, err := data.Stat()
 	if err != nil {
 		return err
 	}
@@ -181,26 +182,16 @@ func doUpload(url string, file string) (err error) {
 	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.ContentLength = file_info.Size()
+	req.ContentLength = fileInfo.Size()
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-
-	request_dump, _ := httputil.DumpRequest(req, false)
-	fmt.Print(string(request_dump))
 
 	client := &http.Client{Transport: tr}
 	res, err := client.Do(req)
 	if err != nil {
 		return err
 	}
-
-	body, err := httputil.DumpResponse(res, false)
-	if err != nil {
-		return err
-	}
-
-	fmt.Print(string(body))
 
 	defer res.Body.Close()
 
@@ -209,7 +200,7 @@ func doUpload(url string, file string) (err error) {
 
 func doRegistration(config Config, vmx string) (err error) {
 
-	sdk_url, err := url.Parse(fmt.Sprintf("https://%s:%s@%s/sdk",
+	sdkURL, err := url.Parse(fmt.Sprintf("https://%s:%s@%s/sdk",
 		url.QueryEscape(config.Username),
 		url.QueryEscape(config.Password),
 		config.Host))
@@ -217,7 +208,7 @@ func doRegistration(config Config, vmx string) (err error) {
 		return err
 	}
 
-	client, err := govmomi.NewClient(*sdk_url, true)
+	client, err := govmomi.NewClient(*sdkURL, true)
 
 	if err != nil {
 		return err
@@ -235,29 +226,99 @@ func doRegistration(config Config, vmx string) (err error) {
 		return err
 	}
 
-	searchIndex := client.SearchIndex()
-	shost, err := searchIndex.FindByDnsName(datacenter, config.ESXHost, false)
-	if err != nil {
-		return err
-	}
-	datastore_string := fmt.Sprintf("[%s] %s/%s.vmtx", config.Datastore, config.VMFolder, strings.TrimSuffix(vmx, ".vmx"))
-	split_string := strings.Split(vmx, "/")
-	last := split_string[len(split_string)-1]
-	vm_name := strings.TrimSuffix(last, ".vmx")
+	/*	searchIndex := client.SearchIndex()
+		shost, err := searchIndex.FindByDnsName(datacenter, config.ESXHost, false)
+		if err != nil {
+			return err
+		}
+	*/
+	resourcePool, err := finder.DefaultResourcePool()
 
-	task, err := folders.VmFolder.RegisterVM(datastore_string, vm_name, true, nil, shost.(*govmomi.HostSystem))
-	if err != nil {
-		return err
-	}
-	info, err := task.WaitForResult(nil)
 	if err != nil {
 		return err
 	}
 
-	if info.State == "success" {
-		return nil
-	} else {
-		return errors.New("Error registering template")
+	datastoreString := fmt.Sprintf("[%s] %s/%s.vmx", config.Datastore, config.VMFolder, strings.TrimSuffix(vmx, ".vmx"))
+	splitString := strings.Split(vmx, "/")
+	last := splitString[len(splitString)-1]
+	vmName := strings.TrimSuffix(last, ".vmx")
+
+	task, err := folders.VmFolder.RegisterVM(datastoreString, vmName, false, resourcePool, nil)
+	if err != nil {
+		return err
 	}
+	_, err = task.WaitForResult(nil)
+	if err != nil {
+		return err
+	}
+
+	vm, err := finder.VirtualMachine(vmName)
+
+  rpRef := resourcePool.Reference()
+
+	cloneSpec := types.VirtualMachineCloneSpec{
+		Location: types.VirtualMachineRelocateSpec{
+			Pool: &rpRef,
+		},
+	}
+
+	task, err = vm.Clone(folders.VmFolder, fmt.Sprintf("%s-vm", vmName), cloneSpec)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = task.WaitForResult(nil)
+
+	if err != nil {
+		return err
+	}
+
+  clonedVM, err := finder.VirtualMachine(fmt.Sprintf("%s-vm", vmName))
+
+	if err != nil {
+		return err
+	}
+
+	task, err = clonedVM.PowerOn()
+
+	if err != nil {
+		return err
+	}
+
+	_, err = task.WaitForResult(nil)
+	if err != nil {
+		return err
+	}
+
+	time.Sleep(150000 * time.Millisecond)
+
+	task, err = clonedVM.PowerOff()
+
+	if err != nil {
+		return err
+	}
+
+	_, err = task.WaitForResult(nil)
+
+	if err != nil {
+		return err
+	}
+
+	err = clonedVM.MarkAsTemplate()
+
+	if err != nil {
+		return err
+	}
+
+	task, err = vm.Destroy()
+
+	_, err = task.WaitForResult(nil)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 
 }
