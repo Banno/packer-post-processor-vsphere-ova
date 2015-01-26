@@ -254,7 +254,7 @@ func doRegistration(config Config, vmx string) (err error) {
 
 	vm, err := finder.VirtualMachine(vmName)
 
-  rpRef := resourcePool.Reference()
+	rpRef := resourcePool.Reference()
 
 	cloneSpec := types.VirtualMachineCloneSpec{
 		Location: types.VirtualMachineRelocateSpec{
@@ -274,7 +274,7 @@ func doRegistration(config Config, vmx string) (err error) {
 		return err
 	}
 
-  clonedVM, err := finder.VirtualMachine(fmt.Sprintf("%s-vm", vmName))
+	clonedVM, err := finder.VirtualMachine(fmt.Sprintf("%s-vm", vmName))
 
 	if err != nil {
 		return err
