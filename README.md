@@ -44,7 +44,7 @@ Add the following, filled out correctly to your post-processors and you should e
       "password":"my_password",
       "datastore": "datastore_name",
       "vm_folder":"folder_on_datastore",
-       esx_host": "dns_name_of_esxhost"
+      "vm_network":"vmware_network_name"
     }
 ]
 ```
