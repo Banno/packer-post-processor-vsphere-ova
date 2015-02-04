@@ -31,7 +31,20 @@ to your packer configuration (see: http://www.packer.io/docs/other/core-configur
 Make sure that the directory which contains the packer-post-processor-vsphere-ova executable is your PATH environmental variable (see http://www.packer.io/docs/extend/plugins.html -> Installing Plugins)
 
 ## Usage
-Add the following, filled out correctly to your post-processors and you should end up with folder_on_datastore/output-virtualbox-iso/packer-virtualbox-iso-{{timestamp}}-disk1.vmdk and packer-virtualbox-iso-{{timestamp}}.vmtx on your datastore. From there you can register and deploy from template on the vmtx. You may have to customize the hardware when deploying so that you can assign a network to the NIC.
+Add the following, filled out correctly to your post-processors and you should end up with `packer-virutalbox-timestamp-vm` registered on your cluster as a template.
+
+I'm not sure if a release of Packer with SCSI support has been released yet, but you can create a virtualbox with a SCSI drive using Packer for maximum performance on your VMWare setup. 
+
+There is some wierdness with how this works:
+1. It uploads a virtual machine
+2. It registers a virtual machine
+3. It clones the virtual machine (it complains about invalid device backing
+   without this)
+4. It powers on the cloned virtual machine
+5. It SLEEPS for 2ish minutes while we wait for power on to complete
+6. It powers off the cloned virtual machine
+7. It marks the cloned virtual machine as a template. 
+8. You end up with a registered template of the vm name with "-vm" appended.
 
 
 ```
