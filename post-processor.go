@@ -226,12 +226,6 @@ func doRegistration(config Config, vmx string) (err error) {
 		return err
 	}
 
-	/*	searchIndex := client.SearchIndex()
-		shost, err := searchIndex.FindByDnsName(datacenter, config.ESXHost, false)
-		if err != nil {
-			return err
-		}
-	*/
 	resourcePool, err := finder.DefaultResourcePool()
 
 	if err != nil {
@@ -291,7 +285,7 @@ func doRegistration(config Config, vmx string) (err error) {
 		return err
 	}
 
-	time.Sleep(150000 * time.Millisecond)
+	time.Sleep(150000 * time.Millisecond) // This is really dirty, but I need to make sure the VM gets fully powered on before I turn it off, otherwise vmware tools won't register on the cloning side.
 
 	task, err = clonedVM.PowerOff()
 
