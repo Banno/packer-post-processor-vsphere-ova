@@ -31,7 +31,6 @@ type Config struct {
 	Password   string `mapstructure:"password"`
 	Username   string `mapstructure:"username"`
 	VMFolder   string `mapstructure:"vm_folder"`
-	ESXHost    string `mapstructure:"esx_host"`
 	VMNetwork  string `mapstructure:"vm_network"`
 
 	tpl *packer.ConfigTemplate
@@ -69,7 +68,6 @@ func (p *PostProcessor) Configure(raws ...interface{}) error {
 		"username":   &p.config.Username,
 		"datastore":  &p.config.Datastore,
 		"vm_folder":  &p.config.VMFolder,
-		"esx_host":   &p.config.ESXHost,
 	}
 	for key, ptr := range templates {
 		if *ptr == "" {
