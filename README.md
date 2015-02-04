@@ -36,6 +36,7 @@ Add the following, filled out correctly to your post-processors and you should e
 I'm not sure if a release of Packer with SCSI support has been released yet, but you can create a virtualbox with a SCSI drive using Packer for maximum performance on your VMWare setup. 
 
 There is some wierdness with how this works:
+
 1. It uploads a virtual machine
 2. It registers a virtual machine
 3. It clones the virtual machine (it complains about invalid device backing
@@ -46,6 +47,8 @@ There is some wierdness with how this works:
 7. It marks the cloned virtual machine as a template. 
 8. You end up with a registered template of the vm name with "-vm" appended.
 
+
+This is the statement you need to add to your packer json file:
 
 ```
 "post-processors": [
