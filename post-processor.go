@@ -109,7 +109,7 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 	}
 
 	// Sweet, we've got an OVA, Now it's time to make that baby something we can work with.
-	command := exec.Command("ovftool", "--lax", "--allowExtraConfig", fmt.Sprintf("--extraConfig:ethernet0.networkName=%s", p.config.VMNetwork), ova, fmt.Sprintf("%s.vmx", strings.TrimSuffix(ova, ".ova")))
+	command := exec.Command("ovftool", "--lax", "--allowAllExtraConfig", fmt.Sprintf("--extraConfig:ethernet0.networkName=%s", p.config.VMNetwork), ova, fmt.Sprintf("%s.vmx", strings.TrimSuffix(ova, ".ova")))
 
 	var ovftoolOut bytes.Buffer
 	command.Stdout = &ovftoolOut
@@ -137,6 +137,8 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 		return nil, false, fmt.Errorf("Failed: %s", err)
 	}
 
+	ui.Message(fmt.Sprintf("Uploaded %s", vmdk))
+
 	err = doUpload(fmt.Sprintf("https://%s:%s@%s/folder/%s/%s?dcPath=%s&dsName=%s",
 		url.QueryEscape(p.config.Username),
 		url.QueryEscape(p.config.Password),
@@ -150,7 +152,9 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 		return nil, false, fmt.Errorf("Failed: %s", err)
 	}
 
-	err = doRegistration(p.config, vmx)
+	ui.Message(fmt.Sprintf("Uploaded %s", vmx))
+
+	err = doRegistration(ui, p.config, vmx)
 
 	if err != nil {
 		return nil, false, fmt.Errorf("Failed: %s", err)
@@ -195,7 +199,7 @@ func doUpload(url string, file string) (err error) {
 	return nil
 }
 
-func doRegistration(config Config, vmx string) (err error) {
+func doRegistration(ui packer.Ui, config Config, vmx string) (err error) {
 
 	sdkURL, err := url.Parse(fmt.Sprintf("https://%s:%s@%s/sdk",
 		url.QueryEscape(config.Username),
@@ -234,6 +238,7 @@ func doRegistration(config Config, vmx string) (err error) {
 	last := splitString[len(splitString)-1]
 	vmName := strings.TrimSuffix(last, ".vmx")
 
+	ui.Message(fmt.Sprintf("Registering %s from %s", vmName, datastoreString))
 	task, err := folders.VmFolder.RegisterVM(datastoreString, vmName, false, resourcePool, nil)
 	if err != nil {
 		return err
@@ -242,6 +247,7 @@ func doRegistration(config Config, vmx string) (err error) {
 	if err != nil {
 		return err
 	}
+	ui.Message(fmt.Sprintf("Registererd VM %s", vmName))
 
 	vm, err := finder.VirtualMachine(vmName)
 
@@ -253,7 +259,10 @@ func doRegistration(config Config, vmx string) (err error) {
 		},
 	}
 
-	task, err = vm.Clone(folders.VmFolder, fmt.Sprintf("%s-vm", vmName), cloneSpec)
+	cloneVmName := fmt.Sprintf("%s-vm", vmName)
+
+	ui.Message(fmt.Sprintf("Cloning VM %s", cloneVmName))
+	task, err = vm.Clone(folders.VmFolder, cloneVmName, cloneSpec)
 
 	if err != nil {
 		return err
@@ -265,12 +274,13 @@ func doRegistration(config Config, vmx string) (err error) {
 		return err
 	}
 
-	clonedVM, err := finder.VirtualMachine(fmt.Sprintf("%s-vm", vmName))
+	clonedVM, err := finder.VirtualMachine(cloneVmName)
 
 	if err != nil {
 		return err
 	}
 
+	ui.Message(fmt.Sprintf("Powering on %s", cloneVmName))
 	task, err = clonedVM.PowerOn()
 
 	if err != nil {
@@ -282,8 +292,11 @@ func doRegistration(config Config, vmx string) (err error) {
 		return err
 	}
 
+	ui.Message(fmt.Sprintf("Powered on %s", cloneVmName))
+
 	time.Sleep(150000 * time.Millisecond) // This is really dirty, but I need to make sure the VM gets fully powered on before I turn it off, otherwise vmware tools won't register on the cloning side.
 
+	ui.Message(fmt.Sprintf("Powering off %s", cloneVmName))
 	task, err = clonedVM.PowerOff()
 
 	if err != nil {
@@ -295,13 +308,16 @@ func doRegistration(config Config, vmx string) (err error) {
 	if err != nil {
 		return err
 	}
+	ui.Message(fmt.Sprintf("Powered off %s", cloneVmName))
 
+	ui.Message(fmt.Sprintf("Marking as template %s", cloneVmName))
 	err = clonedVM.MarkAsTemplate()
 
 	if err != nil {
 		return err
 	}
 
+	ui.Message(fmt.Sprintf("Destroying %s", cloneVmName))
 	task, err = vm.Destroy()
 
 	_, err = task.WaitForResult(nil)
@@ -309,6 +325,7 @@ func doRegistration(config Config, vmx string) (err error) {
 	if err != nil {
 		return err
 	}
+	ui.Message(fmt.Sprintf("Destroyed %s", cloneVmName))
 
 	return nil
 
