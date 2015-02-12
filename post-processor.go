@@ -67,6 +67,7 @@ func (p *PostProcessor) Configure(raws ...interface{}) error {
 		"username":   &p.config.Username,
 		"datastore":  &p.config.Datastore,
 		"vm_folder":  &p.config.VMFolder,
+		"vm_network": &p.config.VMNetwork,
 	}
 	for key, ptr := range templates {
 		if *ptr == "" {
