@@ -180,8 +180,11 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 		return nil, false, fmt.Errorf("Failed: %s", err)
 	}
 	ui.Message("Uploaded and registered to VMware")
+  splitString := strings.Split(vmx, "/")
+  last := splitString[len(splitString)-1]
+  vmName := strings.TrimSuffix(last, ".vmx")
 
-	return artifact, false, nil
+	return &Artifact{fmt.Sprintf("%s-vm",vmName)}, false, nil
 }
 
 func doUpload(url string, file string) (err error) {
