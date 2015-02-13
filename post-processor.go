@@ -9,6 +9,7 @@ import (
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/vim25/types"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -123,9 +124,27 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 	vmdk := fmt.Sprintf("%s-disk1.vmdk", strings.TrimSuffix(ova, ".ova"))
 	vmx := fmt.Sprintf("%s.vmx", strings.TrimSuffix(ova, ".ova"))
 
+	ui.Message("Replacing the hardware version in the vmx")
+
+	vmxContent, err := ioutil.ReadFile(vmx)
+	if err != nil {
+		return nil, false, fmt.Errorf("Failed: %s", err)
+	}
+	lines := strings.Split(string(vmxContent), "\n")
+	for i, line := range lines {
+		if strings.Contains(line, "virtualhw.version") {
+			lines[i] = "virtualhw.version = \"10\""
+		}
+	}
+	output := strings.Join(lines, "\n")
+	err = ioutil.WriteFile(vmx, []byte(output), 0644)
+	if err != nil {
+		return nil, false, fmt.Errorf("Failed: %s", err)
+	}
+
 	ui.Message(fmt.Sprintf("Now going to upload %s and %s to Datastore %s on host %s", vmdk, vmx, p.config.Datastore, p.config.Host))
 
-	err := doUpload(fmt.Sprintf("https://%s:%s@%s/folder/%s/%s?dcPath=%s&dsName=%s",
+	err = doUpload(fmt.Sprintf("https://%s:%s@%s/folder/%s/%s?dcPath=%s&dsName=%s",
 		url.QueryEscape(p.config.Username),
 		url.QueryEscape(p.config.Password),
 		p.config.Host,
