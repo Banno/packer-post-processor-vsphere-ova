@@ -9,6 +9,7 @@ import (
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/vim25/types"
+	"golang.org/x/net/context"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -180,11 +181,11 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 		return nil, false, fmt.Errorf("Failed: %s", err)
 	}
 	ui.Message("Uploaded and registered to VMware")
-  splitString := strings.Split(vmx, "/")
-  last := splitString[len(splitString)-1]
-  vmName := strings.TrimSuffix(last, ".vmx")
+	splitString := strings.Split(vmx, "/")
+	last := splitString[len(splitString)-1]
+	vmName := strings.TrimSuffix(last, ".vmx")
 
-	return &Artifact{fmt.Sprintf("%s-vm",vmName)}, false, nil
+	return &Artifact{fmt.Sprintf("%s-vm", vmName)}, false, nil
 }
 
 func doUpload(url string, file string) (err error) {
@@ -232,25 +233,25 @@ func doRegistration(ui packer.Ui, config Config, vmx string) (err error) {
 		return err
 	}
 
-	client, err := govmomi.NewClient(*sdkURL, true)
+	client, err := govmomi.NewClient(context.TODO(), sdkURL, true)
 
 	if err != nil {
 		return err
 	}
 
-	finder := find.NewFinder(client, false)
-	datacenter, err := finder.DefaultDatacenter()
+	finder := find.NewFinder(client.Client, false)
+	datacenter, err := finder.DefaultDatacenter(context.TODO())
 	finder.SetDatacenter(datacenter)
 	if err != nil {
 		return err
 	}
 
-	folders, err := datacenter.Folders()
+	folders, err := datacenter.Folders(context.TODO())
 	if err != nil {
 		return err
 	}
 
-	resourcePool, err := finder.DefaultResourcePool()
+	resourcePool, err := finder.DefaultResourcePool(context.TODO())
 
 	if err != nil {
 		return err
@@ -262,17 +263,17 @@ func doRegistration(ui packer.Ui, config Config, vmx string) (err error) {
 	vmName := strings.TrimSuffix(last, ".vmx")
 
 	ui.Message(fmt.Sprintf("Registering %s from %s", vmName, datastoreString))
-	task, err := folders.VmFolder.RegisterVM(datastoreString, vmName, false, resourcePool, nil)
+	task, err := folders.VmFolder.RegisterVM(context.TODO(), datastoreString, vmName, false, resourcePool, nil)
 	if err != nil {
 		return err
 	}
-	_, err = task.WaitForResult(nil)
+	_, err = task.WaitForResult(context.TODO(), nil)
 	if err != nil {
 		return err
 	}
 	ui.Message(fmt.Sprintf("Registererd VM %s", vmName))
 
-	vm, err := finder.VirtualMachine(vmName)
+	vm, err := finder.VirtualMachine(context.TODO(), vmName)
 
 	rpRef := resourcePool.Reference()
 
@@ -285,32 +286,32 @@ func doRegistration(ui packer.Ui, config Config, vmx string) (err error) {
 	cloneVmName := fmt.Sprintf("%s-vm", vmName)
 
 	ui.Message(fmt.Sprintf("Cloning VM %s", cloneVmName))
-	task, err = vm.Clone(folders.VmFolder, cloneVmName, cloneSpec)
+	task, err = vm.Clone(context.TODO(), folders.VmFolder, cloneVmName, cloneSpec)
 
 	if err != nil {
 		return err
 	}
 
-	_, err = task.WaitForResult(nil)
+	_, err = task.WaitForResult(context.TODO(), nil)
 
 	if err != nil {
 		return err
 	}
 
-	clonedVM, err := finder.VirtualMachine(cloneVmName)
+	clonedVM, err := finder.VirtualMachine(context.TODO(), cloneVmName)
 
 	if err != nil {
 		return err
 	}
 
 	ui.Message(fmt.Sprintf("Powering on %s", cloneVmName))
-	task, err = clonedVM.PowerOn()
+	task, err = clonedVM.PowerOn(context.TODO())
 
 	if err != nil {
 		return err
 	}
 
-	_, err = task.WaitForResult(nil)
+	_, err = task.WaitForResult(context.TODO(), nil)
 	if err != nil {
 		return err
 	}
@@ -320,13 +321,13 @@ func doRegistration(ui packer.Ui, config Config, vmx string) (err error) {
 	time.Sleep(150000 * time.Millisecond) // This is really dirty, but I need to make sure the VM gets fully powered on before I turn it off, otherwise vmware tools won't register on the cloning side.
 
 	ui.Message(fmt.Sprintf("Powering off %s", cloneVmName))
-	task, err = clonedVM.PowerOff()
+	task, err = clonedVM.PowerOff(context.TODO())
 
 	if err != nil {
 		return err
 	}
 
-	_, err = task.WaitForResult(nil)
+	_, err = task.WaitForResult(context.TODO(), nil)
 
 	if err != nil {
 		return err
@@ -334,16 +335,16 @@ func doRegistration(ui packer.Ui, config Config, vmx string) (err error) {
 	ui.Message(fmt.Sprintf("Powered off %s", cloneVmName))
 
 	ui.Message(fmt.Sprintf("Marking as template %s", cloneVmName))
-	err = clonedVM.MarkAsTemplate()
+	err = clonedVM.MarkAsTemplate(context.TODO())
 
 	if err != nil {
 		return err
 	}
 
 	ui.Message(fmt.Sprintf("Destroying %s", cloneVmName))
-	task, err = vm.Destroy()
+	task, err = vm.Destroy(context.TODO())
 
-	_, err = task.WaitForResult(nil)
+	_, err = task.WaitForResult(context.TODO(), nil)
 
 	if err != nil {
 		return err
