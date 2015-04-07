@@ -6,7 +6,7 @@ This post-processor will upload a VMDK and vmware template to a datastore on VSp
 
 Software:
 
-  * VMware OVF Tool (4.0)
+  * VMware OVF Tool (4.0) [Download from VMWare](https://my.vmware.com/group/vmware/details?downloadGroup=OVFTOOL410&productId=491)
   * vSphere 5.5 (will likely work on 6, but untested)
   
 Notes:
