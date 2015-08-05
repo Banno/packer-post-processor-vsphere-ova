@@ -8,7 +8,7 @@ Software:
 
   * A Local hypervisor for Packer to use during the build:
     1. Oracle [Virtualbox](https://www.virtualbox.org/wiki/Downloads)
-    1. VMware [Workstation for Windows/Linux](http://www.vmware.com/products/workstation/workstation-evaluation)/[Player for Windows/Linux](http://www.vmware.com/products/player/playerpro-evaluation.html)/[Fusion for MacOS](ihttps://www.vmware.com/products/fusion/fusion-evaluation)
+    1. VMware [Workstation for Windows/Linux](http://www.vmware.com/products/workstation/workstation-evaluation)/[Player for Windows/Linux](http://www.vmware.com/products/player/playerpro-evaluation.html)/[Fusion for MacOS](https://www.vmware.com/products/fusion/fusion-evaluation)
   * VMware OVF Tool (4.1.0) [Download from VMWare](https://my.vmware.com/web/vmware/details?productId=491&downloadGroup=OVFTOOL410_OSS)
   * vSphere 5.5 (will likely work on 6, but untested)
 
