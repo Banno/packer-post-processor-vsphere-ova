@@ -67,6 +67,9 @@ This is the statement you need to add to your packer json file:
     }
 ]
 ```
+
+You also will need ```"format": "ova"``` in your virtualbox-iso builder for this to function.
+
 NOTE: This will produce the default behavior described above, you can avoid steps 3-6 if you remove the Floppy, Optical Drive, and Ethernet devices prior to upload.  See below for how to do this.
 
 ### Specifying a Virtual Hardware Version Before Uploading to Vsphere
