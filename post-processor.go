@@ -300,7 +300,6 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
       "--lax",
       "--allowAllExtraConfig",
       fmt.Sprintf("--extraConfig:ethernet0.networkName=%s", p.config.VMNetwork),
-      fmt.Sprintf("--diskMode=%s", p.config.DiskMode),
       fmt.Sprintf("%s", ova),
       fmt.Sprintf("%s", fmt.Sprintf("%s.vmx", strings.TrimSuffix(ova, ".ova"))),
     }
