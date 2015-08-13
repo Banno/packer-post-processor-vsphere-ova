@@ -250,7 +250,7 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
   // Convert vmware builder artifact to ova so we can specify the hard disk
   // type best for use for out purposes.
   if artifact.BuilderId() == "mitchellh.vmware" {
-    if _, err := os.Stat(ova); os.IsNotExist(err) {
+    if _, err := os.Stat("ova/vmware"); os.IsNotExist(err) {
       os.Mkdir("ova/vmware",0755)
     }
 
@@ -287,6 +287,10 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
     ui.Message(fmt.Sprintf("Conversion of VMX to OVA: %s", out.String()))
   }
 
+  if ova == "" {
+    return nil, false, fmt.Errorf("OVA not found")
+  }
+
   if _, err := os.Stat(ova); os.IsNotExist(err) {
     return nil, false, fmt.Errorf("Failed: No such OVA file '%s'", ova)
   } else {
@@ -314,14 +318,14 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
     err := filepath.Walk("ova/vmware", visit)
     fmt.Printf("filepath.Walk() returned %v\n", err)
 
-    for _, path := range artifact.Files() {
-      if strings.HasSuffix(path, ".ova") {
-        ova = path
-        break
-      } else if strings.HasSuffix(path, ".vmx") {
-        vmx = path
-      }
-    }
+    // for _, path := range artifact.Files() {
+    //   if strings.HasSuffix(path, ".ova") {
+    //     ova = path
+    //     break
+    //   } else if strings.HasSuffix(path, ".vmx") {
+    //     vmx = path
+    //   }
+    // }
 
 
     vmdk = fmt.Sprintf("%s-disk1.vmdk", strings.TrimSuffix(ova, ".ova"))
