@@ -10,7 +10,6 @@ import (
   "golang.org/x/net/context"
   "io/ioutil"
   "net/url"
-  "os"
   "os/exec"
   "strings"
   "log"
@@ -36,15 +35,12 @@ type Config struct {
   Username           string `mapstructure:"username"`
   VMFolder           string `mapstructure:"vm_folder"`
   VMNetwork          string `mapstructure:"vm_network"`
-  RemoveEthernet     string `mapstructure:"remove_ethernet"`
-  RemoveFloppy       string `mapstructure:"remove_floppy"`
-  RemoveOpticalDrive string `mapstructure:"remove_optical_drive"`
+  RemoveEthernet     bool   `mapstructure:"remove_ethernet"`
+  RemoveFloppy       bool   `mapstructure:"remove_floppy"`
+  RemoveOpticalDrive bool   `mapstructure:"remove_optical_drive"`
   VirtualHardwareVer string `mapstructure:"virtual_hardware_version"`
   DiskMode           string `mapstructure:"disk_mode"`
-  UploadCommand      string `mapstructure:"upload_command"`
-  UploadArgs         string `mapstructure:"upload_args"`
   Insecure           string `mapstructure:"insecure"`
-  Compression        uint   `mapstructure:"compression"`
   ctx interpolate.Context
 }
 
@@ -69,22 +65,6 @@ func (p *PostProcessor) Configure(raws ...interface{}) error {
     p.config.DiskMode = "thick"
   }
 
-  if p.config.RemoveEthernet == "" {
-    p.config.RemoveEthernet = "false"
-  }
-
-  if p.config.RemoveFloppy == "" {
-    p.config.RemoveFloppy = "false"
-  }
-
-  if p.config.RemoveOpticalDrive == "" {
-    p.config.RemoveOpticalDrive = "false"
-  }
-
-  if p.config.Insecure == "" {
-    p.config.Insecure = "false"
-  }
-
   if p.config.VirtualHardwareVer == "" {
     p.config.VirtualHardwareVer = "10"
   }
@@ -95,11 +75,6 @@ func (p *PostProcessor) Configure(raws ...interface{}) error {
   if _, err := exec.LookPath("ovftool"); err != nil {
     errs = packer.MultiErrorAppend(
       errs, fmt.Errorf("ovftool not found: %s", err))
-  }
-
-  if !(p.config.Compression >= 0 && p.config.Compression <= 9) {
-    errs = packer.MultiErrorAppend(
-    errs, fmt.Errorf("Invalid compression level. Must be between 1 and 9, or 0 for no compression."))
   }
 
   if !(p.config.DiskMode == "thick" ||
@@ -220,11 +195,6 @@ func (p *PostProcessor) RemoveOpticalDrive(vmx string, ui packer.Ui) error {
   return nil
 }
 
-func visit(path string, f os.FileInfo, err error) error {
-  fmt.Printf("Visited: %s\n", path)
-  return nil
-}
-
 func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (packer.Artifact, bool, error) {
   if _, ok := builtins[artifact.BuilderId()]; !ok {
     return nil, false, fmt.Errorf("Unknown artifact type, can't build box: %s", artifact.BuilderId())
@@ -266,40 +236,35 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 
       ui.Message(fmt.Sprintf("%s", ovftoolOut.String()))
 
-      // vmdk = fmt.Sprintf("%s-disk1.vmdk", strings.TrimSuffix(ova, ".ova"))
       vmx = fmt.Sprintf("%s.vmx", strings.TrimSuffix(ova, ".ova"))
     }
   }
 
-  if p.config.RemoveEthernet == "true" {
+  if p.config.RemoveEthernet == true {
     if err := p.RemoveEthernet(vmx, ui); err != nil {
       return nil, false, fmt.Errorf("Removing ethernet0 interface from VMX failed!")
     }
   }
 
-  if p.config.RemoveFloppy == "true" {
+  if p.config.RemoveFloppy == true {
     if err := p.RemoveFloppy(vmx, ui); err != nil {
       return nil, false, fmt.Errorf("Removing floppy drive from VMX failed!")
     }
   }
 
-  if p.config.RemoveOpticalDrive == "true" {
+  if p.config.RemoveOpticalDrive == true {
     if err := p.RemoveOpticalDrive(vmx, ui); err != nil {
       return nil, false, fmt.Errorf("Removing CD/DVD Drive from VMX failed!")
     }
   }
 
-  if p.config.VirtualHardwareVer != "" {
-    if err := p.SetVHardwareVersion(vmx, ui, p.config.VirtualHardwareVer); err != nil {
-      return nil, false, fmt.Errorf("Setting the Virtual Hardware Version in VMX failed!")
-    }
+  if err := p.SetVHardwareVersion(vmx, ui, p.config.VirtualHardwareVer); err != nil {
+    return nil, false, fmt.Errorf("Setting the Virtual Hardware Version in VMX failed!")
   }
 
   if err := doVmxImport(ui, p.config, vmx) ; err != nil {
     return nil, false, fmt.Errorf("Failed: %s", err)
   }
-
-  ui.Message(fmt.Sprintf("Uploaded %s", vmx))
 
   if err := setAsTemplate(ui, p.config, vmx) ; err != nil {
     return nil, false, fmt.Errorf("Failed: %s", err)
@@ -307,19 +272,24 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 
   ui.Message("Uploaded and registered to VMware as a template")
 
-  if artifact.BuilderId() == "mitchellh.vmware" && (p.config.UploadCommand != "" && p.config.UploadArgs != ""){
-    // Convert vmware builder artifact to ova so we can upload to bits if required.
-    if _, err := os.Stat("ova/vmware"); os.IsNotExist(err) {
-      os.Mkdir("ova/vmware",0755)
-    }
+  if artifact.BuilderId() == "mitchellh.vmware" {
+    // ova_dir := "ova/vmware"
 
-    splitString := strings.Split(vmx, "/")
-    ova = fmt.Sprintf("ova/vmware/%s.ova", strings.TrimSuffix(splitString[len(splitString)-1], ".vmx"))
+    // // Convert vmware builder artifact to ova so we can upload to bits if required.
+    // if _, err := os.Stat("ova/vmware"); os.IsNotExist(err) {
+    //   os.MkdirAll(ova_dir,0755)
+    // }
+
+    // splitString := strings.Split(vmx, "/")
+    // ova = fmt.Sprintf("%s/%s.ova", ova_dir, strings.TrimSuffix(splitString[len(splitString)-1], ".vmx"))
+
+    ova = fmt.Sprintf("%s.ova", strings.TrimSuffix(vmx, ".vmx"))
 
     args := []string{
       "--acceptAllEulas",
       "-tt=OVA",
       "--diskMode=thin",
+      "--compress=9",
       fmt.Sprintf("%s", vmx),
       fmt.Sprintf("%s", ova),
     }
@@ -336,30 +306,7 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
     ui.Message(fmt.Sprintf("Conversion of VMX to OVA: %s", out.String()))
   }
 
-  if p.config.UploadCommand != "" && p.config.UploadArgs != "" {
-    if err := doBitsUpload(ui, p.config, ova) ; err != nil {
-      return nil, false, fmt.Errorf("Failed: %s", err)
-    }
-  }
-
   return artifact, false, nil
-}
-
-func doBitsUpload(ui packer.Ui, config Config, ova string) (err error) {
-  args := strings.Split(config.UploadArgs, " ")
-
-  ui.Message(fmt.Sprintf("Please wait, Uploading %s to the bits repo.", ova))
-  var out bytes.Buffer
-  ui.Message(fmt.Sprintf("Starting '%s' with parameters: %s", config.UploadCommand, config.UploadArgs))
-  command := exec.Command(config.UploadCommand, args...)
-  command.Stdout = &out
-  if err := command.Run(); err != nil {
-    return fmt.Errorf("Failed: %s\nStdout: %s", err, out.String())
-  }
-
-  ui.Message(fmt.Sprintf("%s", out.String()))
-
-  return nil
 }
 
 func doVmxImport(ui packer.Ui, config Config, vmx string) (err error) {
