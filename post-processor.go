@@ -10,6 +10,7 @@ import (
   "golang.org/x/net/context"
   "io/ioutil"
   "net/url"
+  "os"
   "os/exec"
   "strings"
   "log"
@@ -273,17 +274,18 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
   ui.Message("Uploaded and registered to VMware as a template")
 
   if artifact.BuilderId() == "mitchellh.vmware" {
-    // ova_dir := "ova/vmware"
+    // ova_dir := fmt.Sprintf("ova/%s", builtins[artifact.BuilderId()])
+    ova_dir := "ova/vmware"
 
-    // // Convert vmware builder artifact to ova so we can upload to bits if required.
-    // if _, err := os.Stat("ova/vmware"); os.IsNotExist(err) {
-    //   os.MkdirAll(ova_dir,0755)
-    // }
+    // Convert vmware builder artifact to ova so we can upload to bits if required.
+    if _, err := os.Stat(ova_dir); os.IsNotExist(err) {
+      os.MkdirAll(ova_dir,0755)
+    }
 
-    // splitString := strings.Split(vmx, "/")
-    // ova = fmt.Sprintf("%s/%s.ova", ova_dir, strings.TrimSuffix(splitString[len(splitString)-1], ".vmx"))
+    splitString := strings.Split(vmx, "/")
+    ova = fmt.Sprintf("%s/%s.ova", ova_dir, strings.TrimSuffix(splitString[len(splitString)-1], ".vmx"))
 
-    ova = fmt.Sprintf("%s.ova", strings.TrimSuffix(vmx, ".vmx"))
+    // ova = fmt.Sprintf("%s.ova", strings.TrimSuffix(vmx, ".vmx"))
 
     args := []string{
       "--acceptAllEulas",
