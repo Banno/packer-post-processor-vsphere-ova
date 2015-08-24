@@ -70,6 +70,10 @@ func (p *PostProcessor) Configure(raws ...interface{}) error {
     p.config.VirtualHardwareVer = "10"
   }
 
+  if p.config.VMFolder == "" {
+    p.config.VMFolder = "Templates"
+  }
+
   // Accumulate any errors
   errs := new(packer.MultiError)
 
@@ -100,7 +104,6 @@ func (p *PostProcessor) Configure(raws ...interface{}) error {
     "password":   &p.config.Password,
     "username":   &p.config.Username,
     "datastore":  &p.config.Datastore,
-    "vm_folder":  &p.config.VMFolder,
   }
 
   for key, ptr := range templates {
@@ -334,6 +337,7 @@ func doVmxImport(ui packer.Ui, config Config, vmx string) (err error) {
     fmt.Sprintf("--datastore=%s", config.Datastore),
     fmt.Sprintf("--diskMode=%s", config.DiskMode),
     fmt.Sprintf("--network=%s", config.VMNetwork),
+    fmt.Sprintf("--vmFolder=%s", config.VMFolder),
     fmt.Sprintf("%s", vmx),
     fmt.Sprintf("%s", ovftool_uri),
   }
@@ -377,6 +381,9 @@ func setAsTemplate(ui packer.Ui, config Config, vmx string ) (err error) {
   splitString := strings.Split(vmx, "/")
   last := splitString[len(splitString)-1]
   vmName := strings.TrimSuffix(last, ".vmx")
+  if config.VMFolder != "" {
+    vmName = fmt.Sprintf("%s/%s", config.VMFolder, vmName)
+  }
 
   vm, err := finder.VirtualMachine(context.TODO(), vmName)
 

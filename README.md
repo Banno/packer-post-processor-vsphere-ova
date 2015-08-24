@@ -39,17 +39,8 @@ Add the following, filled out correctly to your post-processors and you should e
 
 I'm not sure if a release of Packer with SCSI support has been released yet, but you can create a virtualbox with a SCSI drive using Packer for maximum performance on your VMWare setup.
 
-There is some wierdness with how this works:
-
-1. It uploads a virtual machine
-2. It registers a virtual machine
-3. It clones the virtual machine (it complains about invalid device backing
-   without this)
-4. It powers on the cloned virtual machine
-5. It SLEEPS for 2ish minutes while we wait for power on to complete
-6. It powers off the cloned virtual machine
-7. It marks the cloned virtual machine as a template.
-8. You end up with a registered template of the vm name with "-vm" appended.
+1. It uploads and registers the virtual maching using 'ovftool' in the 'Templates' folder
+1. It marks the cloned virtual machine as a template.
 
 This is the statement you need to add to your packer json file:
 
@@ -59,10 +50,10 @@ This is the statement you need to add to your packer json file:
       "type": "vsphere-ova",
       "host":"vcenter_host",
       "datacenter":"datacenter_name",
+      "cluster":"cluster",
       "username":"my_username",
       "password":"my_password",
       "datastore": "datastore_name",
-      "vm_folder":"folder_on_datastore",
       "vm_network":"vmware_network_name"
     }
 ]
