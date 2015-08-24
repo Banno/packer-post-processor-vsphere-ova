@@ -265,13 +265,16 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 	splitString = strings.Split(vmx, "/")
 	vmxDestPath := fmt.Sprintf("folder/%s/%s", p.config.VMFolder, splitString[len(splitString)-1])
 
-	err := doUpload(fmt.Sprintf("https://%s:%s@%s/%s?dcPath=%s&dsName=%s",
-		url.QueryEscape(p.config.Username),
-		url.QueryEscape(p.config.Password),
-		p.config.Host,
-		vmdkDestPath,
-		p.config.Datacenter,
-		p.config.Datastore), vmdk)
+	err := doUpload(
+		ui,
+		fmt.Sprintf("https://%s:%s@%s/%s?dcPath=%s&dsName=%s",
+			url.QueryEscape(p.config.Username),
+			url.QueryEscape(p.config.Password),
+			p.config.Host,
+			vmdkDestPath,
+			p.config.Datacenter,
+			p.config.Datastore),
+		vmdk)
 
 	if err != nil {
 		return nil, false, fmt.Errorf("Failed: %s", err)
@@ -279,13 +282,16 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 
 	ui.Message(fmt.Sprintf("Uploaded %s", vmdk))
 
-	err = doUpload(fmt.Sprintf("https://%s:%s@%s/%s?dcPath=%s&dsName=%s",
-		url.QueryEscape(p.config.Username),
-		url.QueryEscape(p.config.Password),
-		p.config.Host,
-		vmxDestPath,
-		p.config.Datacenter,
-		p.config.Datastore), vmx)
+	err = doUpload(
+		ui,
+		fmt.Sprintf("https://%s:%s@%s/%s?dcPath=%s&dsName=%s",
+			url.QueryEscape(p.config.Username),
+			url.QueryEscape(p.config.Password),
+			p.config.Host,
+			vmxDestPath,
+			p.config.Datacenter,
+			p.config.Datastore),
+		vmx)
 
 	if err != nil {
 		return nil, false, fmt.Errorf("Failed: %s", err)
@@ -303,7 +309,7 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 	return artifact, false, nil
 }
 
-func doUpload(url string, file string) error {
+func doUpload(ui packer.Ui, url string, file string) error {
 
 	data, err := os.Open(file)
 	if err != nil {
@@ -318,6 +324,8 @@ func doUpload(url string, file string) error {
 
 	bar := pb.New64(fileInfo.Size()).SetUnits(pb.U_BYTES)
 	bar.ShowSpeed = true
+	bar.Callback = ui.Message
+	bar.RefreshRate = time.Second * 5
 	reader := bar.NewProxyReader(data)
 
 	req, err := http.NewRequest("PUT", url, reader)
