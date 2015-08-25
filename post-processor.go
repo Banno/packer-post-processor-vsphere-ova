@@ -42,6 +42,8 @@ type Config struct {
   VirtualHardwareVer string `mapstructure:"virtual_hardware_version"`
   DiskMode           string `mapstructure:"disk_mode"`
   Insecure           string `mapstructure:"insecure"`
+  ImportTemplate     bool   `mapstructure:"import_template"`
+  ExportOVA          bool   `mapstructure:"export_ova"`
   ctx interpolate.Context
 }
 
@@ -62,6 +64,14 @@ func (p *PostProcessor) Configure(raws ...interface{}) error {
   }
 
   // Defaults
+  if p.config.ImportTemplate != false {
+    p.config.ImportTemplate = true
+  }
+
+  if p.config.ExportOVA != true {
+    p.config.ExportOVA = false
+  }
+
   if p.config.DiskMode == "" {
     p.config.DiskMode = "thick"
   }
@@ -97,19 +107,21 @@ func (p *PostProcessor) Configure(raws ...interface{}) error {
   }
 
   // First define all our templatable parameters that are _required_
-  templates := map[string]*string{
-    "datacenter": &p.config.Datacenter,
-    "cluster":    &p.config.Cluster,
-    "host":       &p.config.Host,
-    "password":   &p.config.Password,
-    "username":   &p.config.Username,
-    "datastore":  &p.config.Datastore,
-  }
+  if p.config.ImportTemplate == true {
+    templates := map[string]*string{
+      "datacenter": &p.config.Datacenter,
+      "cluster":    &p.config.Cluster,
+      "host":       &p.config.Host,
+      "password":   &p.config.Password,
+      "username":   &p.config.Username,
+      "datastore":  &p.config.Datastore,
+    }
 
-  for key, ptr := range templates {
-    if *ptr == "" {
-      errs = packer.MultiErrorAppend(
-        errs, fmt.Errorf("%s must be set", key))
+    for key, ptr := range templates {
+      if *ptr == "" {
+        errs = packer.MultiErrorAppend(
+          errs, fmt.Errorf("%s must be set", key))
+      }
     }
   }
 
@@ -266,19 +278,21 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
     return nil, false, fmt.Errorf("Setting the Virtual Hardware Version in VMX failed!")
   }
 
-  if err := doVmxImport(ui, p.config, vmx) ; err != nil {
-    return nil, false, fmt.Errorf("Failed: %s", err)
+  if p.config.ImportTemplate {
+    if err := doVmxImport(ui, p.config, vmx) ; err != nil {
+      return nil, false, fmt.Errorf("Failed: %s", err)
+    }
+
+    if err := setAsTemplate(ui, p.config, vmx) ; err != nil {
+      return nil, false, fmt.Errorf("Failed: %s", err)
+    }
+
+    ui.Message("Uploaded and registered to VMware as a template")
   }
 
-  if err := setAsTemplate(ui, p.config, vmx) ; err != nil {
-    return nil, false, fmt.Errorf("Failed: %s", err)
-  }
-
-  ui.Message("Uploaded and registered to VMware as a template")
-
-  if artifact.BuilderId() == "mitchellh.vmware" {
+  if p.config.ExportOVA {
     // ova_dir := fmt.Sprintf("ova/%s", builtins[artifact.BuilderId()])
-    ova_dir := "ova/vmware"
+    ova_dir := fmt.Sprintf("ova/%s", builtins[artifact.BuilderId()])
 
     // Convert vmware builder artifact to ova so we can upload to bits if required.
     if _, err := os.Stat(ova_dir); os.IsNotExist(err) {
