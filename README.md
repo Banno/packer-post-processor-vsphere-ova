@@ -18,7 +18,7 @@ Notes:
 
 ## Installation
 
-Pull the repository and compile the code with ```go build```
+Pull the repository and compile the code with ```go build``` then copy it to your Packer install directory.  You can also just type ```go install .``` if your Packer binaries are in '$GOPATH/bin'.
 
 
 Make sure that the directory which contains the packer-post-processor-vsphere-ova executable is your PATH environmental variable (see http://www.packer.io/docs/extend/plugins.html -> Installing Plugins)
