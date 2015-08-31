@@ -64,14 +64,6 @@ func (p *PostProcessor) Configure(raws ...interface{}) error {
   }
 
   // Defaults
-  if p.config.ImportTemplate != false {
-    p.config.ImportTemplate = true
-  }
-
-  if p.config.ExportOVA != true {
-    p.config.ExportOVA = false
-  }
-
   if p.config.DiskMode == "" {
     p.config.DiskMode = "thick"
   }
@@ -251,9 +243,9 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
       return nil, false, fmt.Errorf("Failed: %s\nStdout: %s", err, ovftoolOut.String())
 
       ui.Message(fmt.Sprintf("%s", ovftoolOut.String()))
-
-      vmx = fmt.Sprintf("%s.vmx", strings.TrimSuffix(ova, ".ova"))
     }
+
+    vmx = fmt.Sprintf("%s.vmx", strings.TrimSuffix(ova, ".ova"))
   }
 
   if p.config.RemoveEthernet == true {
@@ -332,6 +324,8 @@ func doVmxImport(ui packer.Ui, config Config, vmx string) (err error) {
   splitString := strings.Split(vmx, "/")
   last := splitString[len(splitString)-1]
   VMName := strings.TrimSuffix(last, ".vmx")
+
+  VMName = fmt.Sprintf("Template-%s", VMName)
 
   ovftool_uri := fmt.Sprintf("vi://%s:%s@%s/%s/host/%s",
     url.QueryEscape(config.Username),
