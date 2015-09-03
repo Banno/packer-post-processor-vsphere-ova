@@ -4,8 +4,12 @@ import (
 	"bytes"
 	"crypto/tls"
 	"fmt"
+	"github.com/cheggaaa/pb"
+	vmwarecommon "github.com/mitchellh/packer/builder/vmware/common"
 	"github.com/mitchellh/packer/common"
+	"github.com/mitchellh/packer/helper/config"
 	"github.com/mitchellh/packer/packer"
+	"github.com/mitchellh/packer/template/interpolate"
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/vim25/types"
@@ -17,31 +21,28 @@ import (
 	"os/exec"
 	"strings"
 	"time"
-	"github.com/mitchellh/packer/helper/config"
-	"github.com/mitchellh/packer/template/interpolate"
-	vmwarecommon "github.com/mitchellh/packer/builder/vmware/common"
 )
 
 var builtins = map[string]string{
 	"mitchellh.virtualbox": "virtualbox",
-	"mitchellh.vmware": "vmware",
+	"mitchellh.vmware":     "vmware",
 }
 
 type Config struct {
 	common.PackerConfig `mapstructure:",squash"`
 
-	Datacenter string `mapstructure:"datacenter"`
-	Datastore  string `mapstructure:"datastore"`
-	Host       string `mapstructure:"host"`
-	Password   string `mapstructure:"password"`
-	Username   string `mapstructure:"username"`
-	VMFolder   string `mapstructure:"vm_folder"`
-	VMNetwork  string `mapstructure:"vm_network"`
+	Datacenter         string `mapstructure:"datacenter"`
+	Datastore          string `mapstructure:"datastore"`
+	Host               string `mapstructure:"host"`
+	Password           string `mapstructure:"password"`
+	Username           string `mapstructure:"username"`
+	VMFolder           string `mapstructure:"vm_folder"`
+	VMNetwork          string `mapstructure:"vm_network"`
 	RemoveEthernet     string `mapstructure:"remove_ethernet"`
 	RemoveFloppy       string `mapstructure:"remove_floppy"`
 	RemoveOpticalDrive string `mapstructure:"remove_optical_drive"`
 	VirtualHardwareVer string `mapstructure:"virtual_hardware_version"`
-	ctx interpolate.Context
+	ctx                interpolate.Context
 }
 
 type PostProcessor struct {
@@ -193,8 +194,8 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 		return nil, false, fmt.Errorf("Unknown artifact type, can't build box: %s", artifact.BuilderId())
 	}
 
-	ova  := ""
-	vmx  := ""
+	ova := ""
+	vmx := ""
 	vmdk := ""
 	for _, path := range artifact.Files() {
 		if strings.HasSuffix(path, ".ova") {
@@ -207,7 +208,7 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 		}
 	}
 
-	if ova == "" && ( vmx == "" || vmdk == "" ) {
+	if ova == "" && (vmx == "" || vmdk == "") {
 		return nil, false, fmt.Errorf("ERROR: Neither OVA or VMX/VMDK were found!")
 	}
 
@@ -264,13 +265,16 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 	splitString = strings.Split(vmx, "/")
 	vmxDestPath := fmt.Sprintf("folder/%s/%s", p.config.VMFolder, splitString[len(splitString)-1])
 
-	err := doUpload(fmt.Sprintf("https://%s:%s@%s/%s?dcPath=%s&dsName=%s",
-		url.QueryEscape(p.config.Username),
-		url.QueryEscape(p.config.Password),
-		p.config.Host,
-		vmdkDestPath,
-		p.config.Datacenter,
-		p.config.Datastore), vmdk)
+	err := doUpload(
+		ui,
+		fmt.Sprintf("https://%s:%s@%s/%s?dcPath=%s&dsName=%s",
+			url.QueryEscape(p.config.Username),
+			url.QueryEscape(p.config.Password),
+			p.config.Host,
+			vmdkDestPath,
+			p.config.Datacenter,
+			p.config.Datastore),
+		vmdk)
 
 	if err != nil {
 		return nil, false, fmt.Errorf("Failed: %s", err)
@@ -278,13 +282,16 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 
 	ui.Message(fmt.Sprintf("Uploaded %s", vmdk))
 
-	err = doUpload(fmt.Sprintf("https://%s:%s@%s/%s?dcPath=%s&dsName=%s",
-		url.QueryEscape(p.config.Username),
-		url.QueryEscape(p.config.Password),
-		p.config.Host,
-		vmxDestPath,
-		p.config.Datacenter,
-		p.config.Datastore), vmx)
+	err = doUpload(
+		ui,
+		fmt.Sprintf("https://%s:%s@%s/%s?dcPath=%s&dsName=%s",
+			url.QueryEscape(p.config.Username),
+			url.QueryEscape(p.config.Password),
+			p.config.Host,
+			vmxDestPath,
+			p.config.Datacenter,
+			p.config.Datastore),
+		vmx)
 
 	if err != nil {
 		return nil, false, fmt.Errorf("Failed: %s", err)
@@ -302,7 +309,7 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 	return artifact, false, nil
 }
 
-func doUpload(url string, file string) (err error) {
+func doUpload(ui packer.Ui, url string, file string) error {
 
 	data, err := os.Open(file)
 	if err != nil {
@@ -314,20 +321,31 @@ func doUpload(url string, file string) (err error) {
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest("PUT", url, data)
 
+	bar := pb.New64(fileInfo.Size()).SetUnits(pb.U_BYTES)
+	bar.ShowSpeed = true
+	bar.Callback = ui.Message
+	bar.RefreshRate = time.Second * 5
+	reader := bar.NewProxyReader(data)
+
+	req, err := http.NewRequest("PUT", url, reader)
 	if err != nil {
 		return err
 	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.ContentLength = fileInfo.Size()
+
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 
 	client := &http.Client{Transport: tr}
+
+	bar.Start()
 	res, err := client.Do(req)
+	bar.Finish()
+
 	if err != nil {
 		return err
 	}
@@ -337,7 +355,7 @@ func doUpload(url string, file string) (err error) {
 	return nil
 }
 
-func doRegistration(ui packer.Ui, config Config, vmx string, clonerequired bool ) (err error) {
+func doRegistration(ui packer.Ui, config Config, vmx string, clonerequired bool) error {
 
 	sdkURL, err := url.Parse(fmt.Sprintf("https://%s:%s@%s/sdk",
 		url.QueryEscape(config.Username),
@@ -375,7 +393,7 @@ func doRegistration(ui packer.Ui, config Config, vmx string, clonerequired bool 
 	last := splitString[len(splitString)-1]
 	vmName := strings.TrimSuffix(last, ".vmx")
 
-	datastoreString := fmt.Sprintf( "[%s] %s/%s.vmx", config.Datastore, config.VMFolder, vmName )
+	datastoreString := fmt.Sprintf("[%s] %s/%s.vmx", config.Datastore, config.VMFolder, vmName)
 
 	ui.Message(fmt.Sprintf("Registering %s from %s", vmName, datastoreString))
 	task, err := folders.VmFolder.RegisterVM(context.TODO(), datastoreString, vmName, false, resourcePool, nil)
@@ -391,7 +409,6 @@ func doRegistration(ui packer.Ui, config Config, vmx string, clonerequired bool 
 	vm, err := finder.VirtualMachine(context.TODO(), vmName)
 
 	rpRef := resourcePool.Reference()
-
 
 	if clonerequired {
 		cloneSpec := types.VirtualMachineCloneSpec{
