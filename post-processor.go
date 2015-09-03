@@ -276,7 +276,7 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
   }
 
   matched, err := regexp.MatchString("template",p.config.OutputArtifactType)
-  ui.Message(fmt.Sprintf("Output template: %t", matched))
+  ui.Message(fmt.Sprintf("Output Template: %t", matched))
   if matched && err == nil {
     if err := doVmxImport(ui, p.config, vmx) ; err != nil {
       return nil, false, fmt.Errorf("Failed: %s", err)
@@ -290,7 +290,7 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
   }
 
   matched, err = regexp.MatchString("ova",p.config.OutputArtifactType)
-  ui.Message(fmt.Sprintf("Output ova: %t", matched))
+  ui.Message(fmt.Sprintf("Output OVA: %t", matched))
   if matched && err == nil {
     // ova_dir := fmt.Sprintf("ova/%s", builtins[artifact.BuilderId()])
     ova_dir := fmt.Sprintf("ova/%s", builtins[artifact.BuilderId()])
