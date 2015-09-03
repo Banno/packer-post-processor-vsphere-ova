@@ -11,6 +11,7 @@ import (
   "io/ioutil"
   "net/url"
   "os"
+  "regexp"
   "os/exec"
   "strings"
   "log"
@@ -41,9 +42,8 @@ type Config struct {
   RemoveOpticalDrive bool   `mapstructure:"remove_optical_drive"`
   VirtualHardwareVer string `mapstructure:"virtual_hardware_version"`
   DiskMode           string `mapstructure:"disk_mode"`
+  OutputArtifactType string `mapstructure:"output_artifact_type"`
   Insecure           string `mapstructure:"insecure"`
-  ImportTemplate     bool   `mapstructure:"import_template"`
-  ExportOVA          bool   `mapstructure:"export_ova"`
   ctx interpolate.Context
 }
 
@@ -64,6 +64,10 @@ func (p *PostProcessor) Configure(raws ...interface{}) error {
   }
 
   // Defaults
+  if p.config.OutputArtifactType == "" {
+    p.config.DiskMode = "template"
+  }
+
   if p.config.DiskMode == "" {
     p.config.DiskMode = "thick"
   }
@@ -99,8 +103,9 @@ func (p *PostProcessor) Configure(raws ...interface{}) error {
   }
 
   // First define all our templatable parameters that are _required_
-  if p.config.ImportTemplate == true {
-    templates := map[string]*string{
+  matched, err := regexp.MatchString("template",p.config.OutputArtifactType)
+  if matched && err == nil {
+    templates := map[string]*string {
       "datacenter": &p.config.Datacenter,
       "cluster":    &p.config.Cluster,
       "host":       &p.config.Host,
@@ -270,7 +275,9 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
     return nil, false, fmt.Errorf("Setting the Virtual Hardware Version in VMX failed!")
   }
 
-  if p.config.ImportTemplate {
+  matched, err := regexp.MatchString("template",p.config.OutputArtifactType)
+  ui.Message(fmt.Sprintf("Output Template: %t", matched))
+  if matched && err == nil {
     if err := doVmxImport(ui, p.config, vmx) ; err != nil {
       return nil, false, fmt.Errorf("Failed: %s", err)
     }
@@ -282,7 +289,9 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
     ui.Message("Uploaded and registered to VMware as a template")
   }
 
-  if p.config.ExportOVA {
+  matched, err = regexp.MatchString("ova",p.config.OutputArtifactType)
+  ui.Message(fmt.Sprintf("Output OVA: %t", matched))
+  if matched && err == nil {
     // ova_dir := fmt.Sprintf("ova/%s", builtins[artifact.BuilderId()])
     ova_dir := fmt.Sprintf("ova/%s", builtins[artifact.BuilderId()])
 
@@ -388,20 +397,23 @@ func setAsTemplate(ui packer.Ui, config Config, vmx string ) (err error) {
 
   splitString := strings.Split(vmx, "/")
   last := splitString[len(splitString)-1]
-  vmName := strings.TrimSuffix(last, ".vmx")
+
+  VMName := strings.TrimSuffix(last, ".vmx")
+  VMName = fmt.Sprintf("Template-%s", VMName)
+
   if config.VMFolder != "" {
-    vmName = fmt.Sprintf("%s/%s", config.VMFolder, vmName)
+    VMName = fmt.Sprintf("%s/%s", config.VMFolder, VMName)
   }
 
-  vm, err := finder.VirtualMachine(context.TODO(), vmName)
+  vm, err := finder.VirtualMachine(context.TODO(), VMName)
 
-  ui.Message(fmt.Sprintf("Marking as template %s", vmName))
+  ui.Message(fmt.Sprintf("Marking as template %s", VMName))
   err = vm.MarkAsTemplate(context.TODO())
 
   if err != nil {
     return err
   }
-  ui.Message(fmt.Sprintf("%s is now a template", vmName))
+  ui.Message(fmt.Sprintf("%s is now a template", VMName))
 
   return nil
 }
