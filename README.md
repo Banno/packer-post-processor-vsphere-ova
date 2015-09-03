@@ -32,30 +32,6 @@ Add the following, filled out correctly to your post-processors and you should e
 
 1. It uploads and registers the virtual machine using 'ovftool' in the 'Templates' folder
 1. It marks the cloned virtual machine as a template.
-1. Export an OVA file in ./ova/[builder_type].
-
-Add to your packer json file:
-
-```
-"post-processors": [
-    {
-      "type": "vsphere-ova",
-      "host":"vcenter_host",
-      "datacenter":"datacenter_name",
-      "cluster":"cluster",
-      "username":"my_username",
-      "password":"my_password",
-      "datastore": "datastore_name",
-      "export_ova": true
-    }
-]
-```
-
-### Make a vSphere Template
-Add the following, filled out correctly to your post-processors and you should end up with a new template registered on your cluster.
-
-1. It uploads and registers the virtual maching using 'ovftool' in the 'Templates' folder
-1. It marks the cloned virtual machine as a template.
 
 Add to your packer json file:
 
@@ -73,6 +49,30 @@ Add to your packer json file:
 ]
 ```
 
+### Make a vSphere Template
+Add the following, filled out correctly to your post-processors and you should end up with a new template registered on your cluster.
+
+1. Uploads and registers the virtual maching using 'ovftool' in the 'Templates' folder
+1. Marks the cloned virtual machine as a template.
+1. Export an OVA file in ./ova/[builder_type].
+
+Add to your packer json file:
+
+```
+"post-processors": [
+    {
+      "type": "vsphere-ova",
+      "host":"vcenter_host",
+      "datacenter":"datacenter_name",
+      "cluster":"cluster",
+      "username":"my_username",
+      "password":"my_password",
+      "datastore": "datastore_name",
+      "output_artifact_type:" "ova_template"
+    }
+]
+```
+
 ### Make a Local OVA File
 Add the following, filled out correctly to your post-processors and you should end up with an ova file in ./ova/[builder_type].
 
@@ -85,10 +85,18 @@ Add to your packer json file:
     {
       "type": "vsphere-ova",
       "import_template": false,
-      "export_ova": true
+      "output_artifact_type:" "ova"
     }
 ]
 ```
+
+### Specifying an the output artifact type
+
+Add ```"output_artifact_type":"ova|template|ova_template"``` to the post-processor config in your packer template.  'output_artifact_type' Default: "template"
+
+* ova            Produces an OVA file in ./ova/[builder_type].
+* template       Uploads a template to the specified vSphere.
+* ova_template   Produces an OVA file in ./ova/[builder_type] and uploads a template to the specified vSphere.
 
 ### Specifying an alternate folder to hold the Template
 
