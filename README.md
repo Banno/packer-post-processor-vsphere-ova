@@ -1,6 +1,6 @@
 # packer-post-processor-vsphere-ova
 
-This post-processor will upload a VMDK and vmware template to a datastore through VSphere 5.5
+This post-processor will upload vmware template to a datastore through VSphere 5.5 and/or optionally create an ova file locally.
 
 ## Prerequisites
 
