@@ -27,7 +27,7 @@ Make sure that the directory which contains the packer-post-processor-vsphere-ov
 
 NOTE: For Virtualbox builders only, you also will need ```"format": "ova"``` in your virtualbox-iso builder section of your packer template.
 
-### Make a both vSphere Template and a Local OVA file
+### Make a vSphere Template - The default behavior.
 Add the following, filled out correctly to your post-processors and you should end up with a new template registered on your cluster and an ova file in ./ova/[builder_type].
 
 1. It uploads and registers the virtual machine using 'ovftool' in the 'Templates' folder
@@ -49,7 +49,24 @@ Add to your packer json file:
 ]
 ```
 
-### Make a vSphere Template
+### Make a Local OVA File
+Add the following, filled out correctly to your post-processors and you should end up with an ova file in ./ova/[builder_type].
+
+1. Export an OVA file in ./ova/[builder_type].
+
+Add to your packer json file:
+
+```
+"post-processors": [
+    {
+      "type": "vsphere-ova",
+      "import_template": false,
+      "output_artifact_type:" "ova"
+    }
+]
+```
+
+### Make a both vSphere Template and a Local OVA file
 Add the following, filled out correctly to your post-processors and you should end up with a new template registered on your cluster.
 
 1. Uploads and registers the virtual maching using 'ovftool' in the 'Templates' folder
@@ -69,23 +86,6 @@ Add to your packer json file:
       "password":"my_password",
       "datastore": "datastore_name",
       "output_artifact_type:" "ova_template"
-    }
-]
-```
-
-### Make a Local OVA File
-Add the following, filled out correctly to your post-processors and you should end up with an ova file in ./ova/[builder_type].
-
-1. Export an OVA file in ./ova/[builder_type].
-
-Add to your packer json file:
-
-```
-"post-processors": [
-    {
-      "type": "vsphere-ova",
-      "import_template": false,
-      "output_artifact_type:" "ova"
     }
 ]
 ```
