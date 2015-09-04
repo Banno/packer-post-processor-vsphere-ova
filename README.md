@@ -31,7 +31,7 @@ NOTE: For Virtualbox builders only, you also will need ```"format": "ova"``` in 
 Add the following, filled out correctly to your post-processors and you should end up with a new template registered on your cluster and an ova file in ./ova/[builder_type].
 
 1. It uploads and registers the virtual machine using 'ovftool' in the 'Templates' folder
-1. It marks the cloned virtual machine as a template.
+1. It marks the uploaded virtual machine as a template.
 
 Add to your packer json file:
 
@@ -70,7 +70,7 @@ Add to your packer json file:
 Add the following, filled out correctly to your post-processors and you should end up with a new template registered on your cluster.
 
 1. Uploads and registers the virtual maching using 'ovftool' in the 'Templates' folder
-1. Marks the cloned virtual machine as a template.
+1. Marks the uploaded virtual machine as a template.
 1. Export an OVA file in ./ova/[builder_type].
 
 Add to your packer json file:
@@ -90,7 +90,7 @@ Add to your packer json file:
 ]
 ```
 
-### Specifying an the output artifact type
+### Specifying the output artifact type
 
 Add ```"output_artifact_type":"ova|template|ova_template"``` to the post-processor config in your packer template.  'output_artifact_type' Default: "template"
 
