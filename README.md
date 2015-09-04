@@ -60,7 +60,6 @@ Add to your packer json file:
 "post-processors": [
     {
       "type": "vsphere-ova",
-      "import_template": false,
       "output_artifact_type:" "ova"
     }
 ]
