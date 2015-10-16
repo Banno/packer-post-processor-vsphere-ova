@@ -326,6 +326,7 @@ func doUpload(ui packer.Ui, url string, file string) error {
 	bar.ShowSpeed = true
 	bar.Callback = ui.Message
 	bar.RefreshRate = time.Second * 5
+	bar.SetWidth(40)
 	reader := bar.NewProxyReader(data)
 
 	req, err := http.NewRequest("PUT", url, reader)
