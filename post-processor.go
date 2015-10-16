@@ -453,7 +453,32 @@ func doRegistration(ui packer.Ui, config Config, vmx string, clonerequired bool)
 
 		ui.Message(fmt.Sprintf("Powered on %s", cloneVmName))
 
-		time.Sleep(150000 * time.Millisecond) // This is really dirty, but I need to make sure the VM gets fully powered on before I turn it off, otherwise vmware tools won't register on the cloning side.
+		timeout := time.After(5 * time.Minute)
+		tick := time.Tick(500 * time.Millisecond)
+
+	LoopWaitForVMToolsRunning:
+		for {
+			select {
+			case <-timeout:
+				task, err = clonedVM.PowerOff(context.TODO())
+				if err != nil {
+					return err
+				}
+				_, err = task.WaitForResult(context.TODO(), nil)
+				if err != nil {
+					return err
+				}
+				return fmt.Errorf("Timed out while waiting for VM Tools to be recogonized")
+			case <-tick:
+				running, err := clonedVM.IsToolsRunning(context.TODO())
+				if err != nil {
+					return err
+				}
+				if running {
+					break LoopWaitForVMToolsRunning
+				}
+			}
+		}
 
 		ui.Message(fmt.Sprintf("Powering off %s", cloneVmName))
 		task, err = clonedVM.PowerOff(context.TODO())
