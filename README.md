@@ -1,6 +1,6 @@
 # packer-post-processor-vsphere-ova
 
-This post-processor will upload a VMDK and vmware template to a datastore through VSphere 5.5
+This post-processor will upload vmware template to a datastore through VSphere 5.5 and/or optionally create an ova file locally.
 
 ## Prerequisites
 
@@ -18,40 +18,22 @@ Notes:
 
 ## Installation
 
-Pull the repository and compile the code with ```go build```
+Pull the repository and compile the code with ```go build``` then copy it to your Packer install directory.  You can also just type ```go install .``` if your Packer binaries are in '$GOPATH/bin'.
 
-Add
-
-```
-{
-  "post-processors": {
-    "vsphere-ova": "packer-post-processor-vsphere-ova"
-  }
-}
-```
-
-to your packer configuration (see: http://www.packer.io/docs/other/core-configuration.html -> Core Configuration)
 
 Make sure that the directory which contains the packer-post-processor-vsphere-ova executable is your PATH environmental variable (see http://www.packer.io/docs/extend/plugins.html -> Installing Plugins)
 
 ## Usage
-Add the following, filled out correctly to your post-processors and you should end up with `packer-virutalbox-timestamp-vm` registered on your cluster as a template.
 
-I'm not sure if a release of Packer with SCSI support has been released yet, but you can create a virtualbox with a SCSI drive using Packer for maximum performance on your VMWare setup.
+NOTE: For Virtualbox builders only, you also will need ```"format": "ova"``` in your virtualbox-iso builder section of your packer template.
 
-There is some wierdness with how this works:
+### Make a vSphere Template - The default behavior.
+Add the following, filled out correctly to your post-processors and you should end up with a new template registered on your cluster and an ova file in ./ova/[builder_type].
 
-1. It uploads a virtual machine
-2. It registers a virtual machine
-3. It clones the virtual machine (it complains about invalid device backing
-   without this)
-4. It powers on the cloned virtual machine
-5. It SLEEPS for 2ish minutes while we wait for power on to complete
-6. It powers off the cloned virtual machine
-7. It marks the cloned virtual machine as a template.
-8. You end up with a registered template of the vm name with "-vm" appended.
+1. It uploads and registers the virtual machine using 'ovftool' in the 'Templates' folder
+1. It marks the uploaded virtual machine as a template.
 
-This is the statement you need to add to your packer json file:
+Add to your packer json file:
 
 ```
 "post-processors": [
@@ -59,18 +41,69 @@ This is the statement you need to add to your packer json file:
       "type": "vsphere-ova",
       "host":"vcenter_host",
       "datacenter":"datacenter_name",
+      "cluster":"cluster",
       "username":"my_username",
       "password":"my_password",
-      "datastore": "datastore_name",
-      "vm_folder":"folder_on_datastore",
-      "vm_network":"vmware_network_name"
+      "datastore": "datastore_name"
     }
 ]
 ```
 
-You also will need ```"format": "ova"``` in your virtualbox-iso builder for this to function.
+### Make a Local OVA File
+Add the following, filled out correctly to your post-processors and you should end up with an ova file in ./ova/[builder_type].
 
-NOTE: This will produce the default behavior described above, you can avoid steps 3-6 if you remove the Floppy, Optical Drive, and Ethernet devices prior to upload.  See below for how to do this.
+1. Export an OVA file in ./ova/[builder_type].
+
+Add to your packer json file:
+
+```
+"post-processors": [
+    {
+      "type": "vsphere-ova",
+      "output_artifact_type:" "ova"
+    }
+]
+```
+
+### Make a both vSphere Template and a Local OVA file
+Add the following, filled out correctly to your post-processors and you should end up with a new template registered on your cluster.
+
+1. Uploads and registers the virtual maching using 'ovftool' in the 'Templates' folder
+1. Marks the uploaded virtual machine as a template.
+1. Export an OVA file in ./ova/[builder_type].
+
+Add to your packer json file:
+
+```
+"post-processors": [
+    {
+      "type": "vsphere-ova",
+      "host":"vcenter_host",
+      "datacenter":"datacenter_name",
+      "cluster":"cluster",
+      "username":"my_username",
+      "password":"my_password",
+      "datastore": "datastore_name",
+      "output_artifact_type:" "ova_template"
+    }
+]
+```
+
+### Specifying the output artifact type
+
+Add ```"output_artifact_type":"ova|template|ova_template"``` to the post-processor config in your packer template.  'output_artifact_type' Default: "template"
+
+* ova            Produces an OVA file in ./ova/[builder_type].
+* template       Uploads a template to the specified vSphere.
+* ova_template   Produces an OVA file in ./ova/[builder_type] and uploads a template to the specified vSphere.
+
+### Specifying an alternate folder to hold the Template
+
+Add ```"vm_folder":"folder_name"``` to the post-processor config in your packer template.  'folder_name' is realative to the Datacenter name.  Default: "Templates"
+
+### Specifying a specific virtual network to connect to
+
+Add ```"vm_network":"vmware_network_name"``` to the post-processor config in your packer template.  'vmware_network_name' Default: "VM Network"
 
 ### Specifying a Virtual Hardware Version Before Uploading to Vsphere
 
@@ -81,15 +114,10 @@ Add ```"virtual_hardware_version": "n"``` to the post-processor config in your p
 Add ```"remove_floppy": "true"``` to the post-processor config in your packer template.
 
 ### Removing the Ethernet0 Interface Before Uploading to Vsphere
+NOTE: Do not use with 'vm_network'.
 
-Add ```"remove_ethernet": "true"``` to the post-processor config in your packer template.
+Add ```"remove_ethernet": "true"``` to the post-processor config in your packer template.  
 
 ### Removing the Optical Drive Before Uploading to Vsphere
 
 Add ```"remove_optical_drive": "true"``` to the post-processor config in your packer template.
-
-### Avoiding Post-Processing Steps 3-6
-Add ```"remove_floppy": "true", "remove_ethernet": "true", "remove_optical_drive": "true"``` to the post-processor config in your packer template.
-
-NOTE: This makes the ```"vm_network": "vmware_network_name"``` parameter optional.
-
