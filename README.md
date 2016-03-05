@@ -28,7 +28,7 @@ Make sure that the directory which contains the packer-post-processor-vsphere-ov
 NOTE: For Virtualbox builders only, you also will need ```"format": "ova"``` in your virtualbox-iso builder section of your packer template.
 
 ### Make a vSphere Template - The default behavior.
-Add the following, filled out correctly to your post-processors and you should end up with a new template registered on your cluster and an ova file in ./ova/[builder_type].
+Add the following, filled out correctly to your post-processors and you should end up with a new template registered on your cluster.
 
 1. It uploads and registers the virtual machine using 'ovftool' in the 'Templates' folder
 1. It marks the uploaded virtual machine as a template.
@@ -66,7 +66,7 @@ Add to your packer json file:
 ```
 
 ### Make a both vSphere Template and a Local OVA file
-Add the following, filled out correctly to your post-processors and you should end up with a new template registered on your cluster.
+Add the following, filled out correctly to your post-processors and you should end up with a new template registered on your cluster and an ova file in ./ova/[builder_type].
 
 1. Uploads and registers the virtual maching using 'ovftool' in the 'Templates' folder
 1. Marks the uploaded virtual machine as a template.
