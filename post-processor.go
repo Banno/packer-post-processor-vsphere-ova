@@ -65,7 +65,7 @@ func (p *PostProcessor) Configure(raws ...interface{}) error {
 
   // Defaults
   if p.config.OutputArtifactType == "" {
-    p.config.DiskMode = "template"
+    p.config.OutputArtifactType = "template"
   }
 
   if p.config.DiskMode == "" {
@@ -99,7 +99,7 @@ func (p *PostProcessor) Configure(raws ...interface{}) error {
     p.config.DiskMode == "sparse" ||
     p.config.DiskMode == "flat") {
     errs = packer.MultiErrorAppend(
-      errs, fmt.Errorf("Invalid disk_mode. Only thick(Default), thin, monolithicSparse, monolithicFlat, twoGbMaxExtentSparse, twoGbMaxExtentFlat, seSparse, eagerZeroedThick, sparse, and flat are allowed."))
+      errs, fmt.Errorf("Invalid disk_mode '" + p.config.DiskMode + "'. Only thick(Default), thin, monolithicSparse, monolithicFlat, twoGbMaxExtentSparse, twoGbMaxExtentFlat, seSparse, eagerZeroedThick, sparse, and flat are allowed."))
   }
 
   // First define all our templatable parameters that are _required_
