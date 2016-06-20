@@ -359,7 +359,7 @@ func doVmxImport(ui packer.Ui, config Config, vmx string) (err error) {
     fmt.Sprintf("%s", ovftool_uri),
   }
 
-  ui.Message(fmt.Sprintf("Uploading %s to vSphere", vmx))
+  ui.Message(fmt.Sprintf("Uploading %s to vSphere with command: %s", vmx, strings.Join(args, " ")))
   var out bytes.Buffer
   log.Printf("Starting ovftool with parameters: %s", strings.Join(args, " "))
   cmd := exec.Command("ovftool", args...)
