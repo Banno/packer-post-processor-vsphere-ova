@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"github.com/cheggaaa/pb"
 	vmwarecommon "github.com/mitchellh/packer/builder/vmware/common"
 	"github.com/mitchellh/packer/common"
 	"github.com/mitchellh/packer/helper/config"
@@ -17,7 +18,14 @@ import (
 	"regexp"
 	"os/exec"
 	"strings"
+<<<<<<< HEAD
 	"log"
+	"github.com/mitchellh/packer/helper/config"
+	"github.com/mitchellh/packer/template/interpolate"
+	vmwarecommon "github.com/mitchellh/packer/builder/vmware/common"
+=======
+	"time"
+>>>>>>> c0a508588b4b83366e5d9b62a3f712964b77492e
 )
 
 var builtins = map[string]string{
@@ -28,6 +36,7 @@ var builtins = map[string]string{
 type Config struct {
 	common.PackerConfig `mapstructure:",squash"`
 
+<<<<<<< HEAD
 	Datacenter string `mapstructure:"datacenter"`
 	Datastore string `mapstructure:"datastore"`
 	Host string `mapstructure:"host"`
@@ -45,6 +54,20 @@ type Config struct {
 	OutputArtifactType string `mapstructure:"output_artifact_type"`
 	Insecure string `mapstructure:"insecure"`
 	ctx interpolate.Context
+=======
+	Datacenter         string `mapstructure:"datacenter"`
+	Datastore          string `mapstructure:"datastore"`
+	Host               string `mapstructure:"host"`
+	Password           string `mapstructure:"password"`
+	Username           string `mapstructure:"username"`
+	VMFolder           string `mapstructure:"vm_folder"`
+	VMNetwork          string `mapstructure:"vm_network"`
+	RemoveEthernet     string `mapstructure:"remove_ethernet"`
+	RemoveFloppy       string `mapstructure:"remove_floppy"`
+	RemoveOpticalDrive string `mapstructure:"remove_optical_drive"`
+	VirtualHardwareVer string `mapstructure:"virtual_hardware_version"`
+	ctx                interpolate.Context
+>>>>>>> c0a508588b4b83366e5d9b62a3f712964b77492e
 }
 
 type PostProcessor struct {
@@ -213,8 +236,14 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 		return nil, false, fmt.Errorf("Unknown artifact type, can't build box: %s", artifact.BuilderId())
 	}
 
+<<<<<<< HEAD
 	ova	:= ""
 	vmx	:= ""
+=======
+	ova := ""
+	vmx := ""
+	vmdk := ""
+>>>>>>> c0a508588b4b83366e5d9b62a3f712964b77492e
 	for _, path := range artifact.Files() {
 		if strings.HasSuffix(path, ".ova") {
 			ova = path
@@ -225,8 +254,13 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 		}
 	}
 
+<<<<<<< HEAD
 	if ova == "" && vmx == "" {
 		return nil, false, fmt.Errorf("ERROR: Neither OVA nor VMX were found!")
+=======
+	if ova == "" && (vmx == "" || vmdk == "") {
+		return nil, false, fmt.Errorf("ERROR: Neither OVA or VMX/VMDK were found!")
+>>>>>>> c0a508588b4b83366e5d9b62a3f712964b77492e
 	}
 
 	if artifact.BuilderId() == "mitchellh.virtualbox" && ova != "" {
@@ -275,16 +309,56 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 		return nil, false, fmt.Errorf("Setting the Virtual Hardware Version in VMX failed!")
 	}
 
-  matched, err := regexp.MatchString("ova",p.config.OutputArtifactType)
+	matched, err := regexp.MatchString("template",p.config.OutputArtifactType)
+	ui.Message(fmt.Sprintf("Output Template: %t", matched))
+	if matched && err == nil {
+		if err := doVmxImport(ui, p.config, vmx) ; err != nil {
+			return nil, false, fmt.Errorf("Failed: %s", err)
+		}
+
+<<<<<<< HEAD
+		if err := setAsTemplate(ui, p.config, vmx) ; err != nil {
+			return nil, false, fmt.Errorf("Failed: %s", err)
+		}
+=======
+	err := doUpload(
+		ui,
+		fmt.Sprintf("https://%s:%s@%s/%s?dcPath=%s&dsName=%s",
+			url.QueryEscape(p.config.Username),
+			url.QueryEscape(p.config.Password),
+			p.config.Host,
+			vmdkDestPath,
+			p.config.Datacenter,
+			p.config.Datastore),
+		vmdk)
+>>>>>>> c0a508588b4b83366e5d9b62a3f712964b77492e
+
+		ui.Message("Uploaded and registered to VMware as a template")
+	}
+
+	matched, err = regexp.MatchString("ova",p.config.OutputArtifactType)
 	ui.Message(fmt.Sprintf("Output OVA: %t", matched))
 	if matched && err == nil {
 		// ova_dir := fmt.Sprintf("ova/%s", builtins[artifact.BuilderId()])
 		ova_dir := fmt.Sprintf("ova/%s", builtins[artifact.BuilderId()])
 
+<<<<<<< HEAD
 		// Convert vmware builder artifact to ova so we can upload to bits if required.
 		if _, err := os.Stat(ova_dir); os.IsNotExist(err) {
 			os.MkdirAll(ova_dir,0755)
 		}
+=======
+	err = doUpload(
+		ui,
+		fmt.Sprintf("https://%s:%s@%s/%s?dcPath=%s&dsName=%s",
+			url.QueryEscape(p.config.Username),
+			url.QueryEscape(p.config.Password),
+			p.config.Host,
+			vmxDestPath,
+			p.config.Datacenter,
+			p.config.Datastore),
+		vmx)
+>>>>>>> c0a508588b4b83366e5d9b62a3f712964b77492e
 
 		splitString := strings.Split(vmx, "/")
 		ova = fmt.Sprintf("%s/%s.ova", ova_dir, strings.TrimSuffix(splitString[len(splitString)-1], ".vmx"))
@@ -312,29 +386,16 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 		ui.Message(fmt.Sprintf("Conversion of VMX to OVA: %s", out.String()))
 	}
 
-  matched, err = regexp.MatchString("template",p.config.OutputArtifactType)
-	ui.Message(fmt.Sprintf("Output Template: %t", matched))
-	if matched && err == nil {
-		if err := doVmxImport(ui, p.config, vmx) ; err != nil {
-			return nil, false, fmt.Errorf("Failed: %s", err)
-		}
-
-		if err := setAsTemplate(ui, p.config, vmx) ; err != nil {
-			return nil, false, fmt.Errorf("Failed: %s", err)
-		}
-
-		ui.Message("Uploaded and registered to VMware as a template")
-	}
-
 	return artifact, false, nil
 }
 
+<<<<<<< HEAD
 func doVmxImport(ui packer.Ui, config Config, vmx string) (err error) {
   splitString := strings.Split(vmx, "/")
   last := splitString[len(splitString)-1]
   VMName := strings.TrimSuffix(last, ".vmx")
 
-  // VMName = fmt.Sprintf("Template-%s", VMName)
+  VMName = fmt.Sprintf("Template-%s", VMName)
 
   ovftool_uri := fmt.Sprintf("vi://%s:%s@%s/%s/host/%s",
     url.QueryEscape(config.Username),
@@ -359,27 +420,77 @@ func doVmxImport(ui packer.Ui, config Config, vmx string) (err error) {
     fmt.Sprintf("%s", ovftool_uri),
   }
 
-  ui.Message(fmt.Sprintf("Uploading %s to vSphere with command: ovftool %s", vmx, strings.Join(args, " ")))
+  ui.Message(fmt.Sprintf("Uploading %s to vSphere with command: %s", vmx, strings.Join(args, " ")))
   var out bytes.Buffer
   log.Printf("Starting ovftool with parameters: %s", strings.Join(args, " "))
   cmd := exec.Command("ovftool", args...)
   cmd.Stdout = &out
   if err := cmd.Run(); err != nil {
-    return fmt.Errorf("VMX Import Failed: %s\nStdout: %s", err, out.String())
+    return fmt.Errorf("Failed: %s\nStdout: %s", err, out.String())
   }
 
-  ui.Message(fmt.Sprintf("VMX Import %s", out.String()))
+  ui.Message(fmt.Sprintf("%s", out.String()))
 
   return nil
 }
 
 func setAsTemplate(ui packer.Ui, config Config, vmx string ) (err error) {
+=======
+func doUpload(ui packer.Ui, url string, file string) error {
+
+	data, err := os.Open(file)
+	if err != nil {
+		return err
+	}
+	defer data.Close()
+
+	fileInfo, err := data.Stat()
+	if err != nil {
+		return err
+	}
+
+	bar := pb.New64(fileInfo.Size()).SetUnits(pb.U_BYTES)
+	bar.ShowSpeed = true
+	bar.Callback = ui.Message
+	bar.RefreshRate = time.Second * 5
+	bar.SetWidth(40)
+	reader := bar.NewProxyReader(data)
+
+	req, err := http.NewRequest("PUT", url, reader)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.ContentLength = fileInfo.Size()
+
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+
+	client := &http.Client{Transport: tr}
+
+	bar.Start()
+	res, err := client.Do(req)
+	bar.Finish()
+
+	if err != nil {
+		return err
+	}
+
+	defer res.Body.Close()
+
+	return nil
+}
+
+func doRegistration(ui packer.Ui, config Config, vmx string, clonerequired bool) error {
+
+>>>>>>> c0a508588b4b83366e5d9b62a3f712964b77492e
 	sdkURL, err := url.Parse(fmt.Sprintf("https://%s:%s@%s/sdk",
 		url.QueryEscape(config.Username),
 		url.QueryEscape(config.Password),
 		config.Host))
-	
-  if err != nil {
+	if err != nil {
 		return err
 	}
 
@@ -399,20 +510,130 @@ func setAsTemplate(ui packer.Ui, config Config, vmx string ) (err error) {
 	splitString := strings.Split(vmx, "/")
 	last := splitString[len(splitString)-1]
 
+<<<<<<< HEAD
 	VMName := strings.TrimSuffix(last, ".vmx")
-  // VMName = fmt.Sprintf("Template-%s", VMName)
+	VMName = fmt.Sprintf("Template-%s", VMName)
+=======
+	datastoreString := fmt.Sprintf("[%s] %s/%s.vmx", config.Datastore, config.VMFolder, vmName)
+>>>>>>> c0a508588b4b83366e5d9b62a3f712964b77492e
 
 	if config.VMFolder != "" {
 		VMName = fmt.Sprintf("%s/%s", config.VMFolder, VMName)
 	}
+<<<<<<< HEAD
+=======
+	ui.Message(fmt.Sprintf("Registererd VM %s", vmName))
+
+	vm, err := finder.VirtualMachine(context.TODO(), vmName)
+
+	rpRef := resourcePool.Reference()
+
+	if clonerequired {
+		cloneSpec := types.VirtualMachineCloneSpec{
+			Location: types.VirtualMachineRelocateSpec{
+				Pool: &rpRef,
+			},
+		}
+
+		cloneVmName := fmt.Sprintf("%s-vm", vmName)
+
+		ui.Message(fmt.Sprintf("Cloning VM %s", cloneVmName))
+		task, err = vm.Clone(context.TODO(), folders.VmFolder, cloneVmName, cloneSpec)
+>>>>>>> c0a508588b4b83366e5d9b62a3f712964b77492e
 
 	vm, err := finder.VirtualMachine(context.TODO(), VMName)
 
 	ui.Message(fmt.Sprintf("Marking as template %s", VMName))
 	err = vm.MarkAsTemplate(context.TODO())
 
+<<<<<<< HEAD
 	if err != nil {
 		return err
+=======
+		if err != nil {
+			return err
+		}
+
+		ui.Message(fmt.Sprintf("Powering on %s", cloneVmName))
+		task, err = clonedVM.PowerOn(context.TODO())
+
+		if err != nil {
+			return err
+		}
+
+		_, err = task.WaitForResult(context.TODO(), nil)
+		if err != nil {
+			return err
+		}
+
+		ui.Message(fmt.Sprintf("Powered on %s", cloneVmName))
+
+		timeout := time.After(5 * time.Minute)
+		tick := time.Tick(500 * time.Millisecond)
+
+	LoopWaitForVMToolsRunning:
+		for {
+			select {
+			case <-timeout:
+				task, err = clonedVM.PowerOff(context.TODO())
+				if err != nil {
+					return err
+				}
+				_, err = task.WaitForResult(context.TODO(), nil)
+				if err != nil {
+					return err
+				}
+				return fmt.Errorf("Timed out while waiting for VM Tools to be recogonized")
+			case <-tick:
+				running, err := clonedVM.IsToolsRunning(context.TODO())
+				if err != nil {
+					return err
+				}
+				if running {
+					break LoopWaitForVMToolsRunning
+				}
+			}
+		}
+
+		ui.Message(fmt.Sprintf("Powering off %s", cloneVmName))
+		task, err = clonedVM.PowerOff(context.TODO())
+
+		if err != nil {
+			return err
+		}
+
+		_, err = task.WaitForResult(context.TODO(), nil)
+
+		if err != nil {
+			return err
+		}
+		ui.Message(fmt.Sprintf("Powered off %s", cloneVmName))
+
+		ui.Message(fmt.Sprintf("Marking as template %s", cloneVmName))
+		err = clonedVM.MarkAsTemplate(context.TODO())
+
+		if err != nil {
+			return err
+		}
+
+		ui.Message(fmt.Sprintf("Destroying %s", cloneVmName))
+		task, err = vm.Destroy(context.TODO())
+
+		_, err = task.WaitForResult(context.TODO(), nil)
+
+		if err != nil {
+			return err
+		}
+		ui.Message(fmt.Sprintf("Destroyed %s", cloneVmName))
+	} else {
+		ui.Message(fmt.Sprintf("Marking as template %s", vmName))
+		err = vm.MarkAsTemplate(context.TODO())
+
+		if err != nil {
+			return err
+		}
+		ui.Message(fmt.Sprintf("%s is now a template", vmName))
+>>>>>>> c0a508588b4b83366e5d9b62a3f712964b77492e
 	}
 	ui.Message(fmt.Sprintf("%s is now a template", VMName))
 
