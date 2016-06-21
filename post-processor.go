@@ -275,21 +275,7 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 		return nil, false, fmt.Errorf("Setting the Virtual Hardware Version in VMX failed!")
 	}
 
-	matched, err := regexp.MatchString("template",p.config.OutputArtifactType)
-	ui.Message(fmt.Sprintf("Output Template: %t", matched))
-	if matched && err == nil {
-		if err := doVmxImport(ui, p.config, vmx) ; err != nil {
-			return nil, false, fmt.Errorf("Failed: %s", err)
-		}
-
-		if err := setAsTemplate(ui, p.config, vmx) ; err != nil {
-			return nil, false, fmt.Errorf("Failed: %s", err)
-		}
-
-		ui.Message("Uploaded and registered to VMware as a template")
-	}
-
-	matched, err = regexp.MatchString("ova",p.config.OutputArtifactType)
+  matched, err := regexp.MatchString("ova",p.config.OutputArtifactType)
 	ui.Message(fmt.Sprintf("Output OVA: %t", matched))
 	if matched && err == nil {
 		// ova_dir := fmt.Sprintf("ova/%s", builtins[artifact.BuilderId()])
@@ -326,6 +312,20 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 		ui.Message(fmt.Sprintf("Conversion of VMX to OVA: %s", out.String()))
 	}
 
+  matched, err = regexp.MatchString("template",p.config.OutputArtifactType)
+	ui.Message(fmt.Sprintf("Output Template: %t", matched))
+	if matched && err == nil {
+		if err := doVmxImport(ui, p.config, vmx) ; err != nil {
+			return nil, false, fmt.Errorf("Failed: %s", err)
+		}
+
+		if err := setAsTemplate(ui, p.config, vmx) ; err != nil {
+			return nil, false, fmt.Errorf("Failed: %s", err)
+		}
+
+		ui.Message("Uploaded and registered to VMware as a template")
+	}
+
 	return artifact, false, nil
 }
 
@@ -334,7 +334,7 @@ func doVmxImport(ui packer.Ui, config Config, vmx string) (err error) {
   last := splitString[len(splitString)-1]
   VMName := strings.TrimSuffix(last, ".vmx")
 
-  VMName = fmt.Sprintf("Template-%s", VMName)
+  // VMName = fmt.Sprintf("Template-%s", VMName)
 
   ovftool_uri := fmt.Sprintf("vi://%s:%s@%s/%s/host/%s",
     url.QueryEscape(config.Username),
@@ -365,10 +365,10 @@ func doVmxImport(ui packer.Ui, config Config, vmx string) (err error) {
   cmd := exec.Command("ovftool", args...)
   cmd.Stdout = &out
   if err := cmd.Run(); err != nil {
-    return fmt.Errorf("Failed: %s\nStdout: %s", err, out.String())
+    return fmt.Errorf("VMX Import Failed: %s\nStdout: %s", err, out.String())
   }
 
-  ui.Message(fmt.Sprintf("%s", out.String()))
+  ui.Message(fmt.Sprintf("VMX Import %s", out.String()))
 
   return nil
 }
@@ -378,7 +378,8 @@ func setAsTemplate(ui packer.Ui, config Config, vmx string ) (err error) {
 		url.QueryEscape(config.Username),
 		url.QueryEscape(config.Password),
 		config.Host))
-	if err != nil {
+	
+  if err != nil {
 		return err
 	}
 
@@ -399,7 +400,7 @@ func setAsTemplate(ui packer.Ui, config Config, vmx string ) (err error) {
 	last := splitString[len(splitString)-1]
 
 	VMName := strings.TrimSuffix(last, ".vmx")
-	VMName = fmt.Sprintf("Template-%s", VMName)
+  // VMName = fmt.Sprintf("Template-%s", VMName)
 
 	if config.VMFolder != "" {
 		VMName = fmt.Sprintf("%s/%s", config.VMFolder, VMName)
