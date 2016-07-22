@@ -373,11 +373,12 @@ func doRegistration(ui packer.Ui, config Config, vmx string, clonerequired bool)
 	}
 
 	finder := find.NewFinder(client.Client, false)
-	datacenter, err := finder.DefaultDatacenter(context.TODO())
-	finder.SetDatacenter(datacenter)
+       datacenter, err := finder.DatacenterOrDefault(context.TODO(), config.Datacenter)
 	if err != nil {
 		return err
 	}
+       finder.SetDatacenter(datacenter)
+
 
 	folders, err := datacenter.Folders(context.TODO())
 	if err != nil {
