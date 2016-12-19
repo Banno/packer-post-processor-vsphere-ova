@@ -59,6 +59,8 @@ This is the statement you need to add to your packer json file:
       "type": "vsphere-ova",
       "host":"vcenter_host",
       "datacenter":"datacenter_name",
+      "cluster": "cluster_name |optional",
+      "resource_pool": "resource_pool_name |optional",
       "username":"my_username",
       "password":"my_password",
       "datastore": "datastore_name",
@@ -92,4 +94,3 @@ Add ```"remove_optical_drive": "true"``` to the post-processor config in your pa
 Add ```"remove_floppy": "true", "remove_ethernet": "true", "remove_optical_drive": "true"``` to the post-processor config in your packer template.
 
 NOTE: This makes the ```"vm_network": "vmware_network_name"``` parameter optional.
-
