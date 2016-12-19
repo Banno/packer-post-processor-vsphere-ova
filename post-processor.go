@@ -4,6 +4,15 @@ import (
 	"bytes"
 	"crypto/tls"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"os"
+	"os/exec"
+	debug "runtime/debug"
+	"strings"
+	"time"
+
 	"github.com/cheggaaa/pb"
 	vmwarecommon "github.com/mitchellh/packer/builder/vmware/common"
 	"github.com/mitchellh/packer/common"
@@ -12,15 +21,9 @@ import (
 	"github.com/mitchellh/packer/template/interpolate"
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/find"
+	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/vim25/types"
 	"golang.org/x/net/context"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"os"
-	"os/exec"
-	"strings"
-	"time"
 )
 
 var builtins = map[string]string{
@@ -32,6 +35,8 @@ type Config struct {
 	common.PackerConfig `mapstructure:",squash"`
 
 	Datacenter         string `mapstructure:"datacenter"`
+	Cluster            string `mapstructure:"cluster"`
+	ResourcePool       string `mapstructure:"resource_pool"`
 	Datastore          string `mapstructure:"datastore"`
 	Host               string `mapstructure:"host"`
 	Password           string `mapstructure:"password"`
@@ -356,6 +361,33 @@ func doUpload(ui packer.Ui, url string, file string) error {
 	return nil
 }
 
+func getResourcePool(finder *find.Finder, config *Config, client *govmomi.Client) (*object.ResourcePool, error) {
+	var resourcePool *object.ResourcePool
+	var err error
+
+	if config.ResourcePool != "" {
+		resourcePool, err = finder.ResourcePool(context.TODO(), config.ResourcePool)
+	} else if config.Cluster != "" {
+		var cluster *object.ClusterComputeResource
+
+		cluster, err = finder.ClusterComputeResource(context.TODO(), config.Cluster)
+		if err != nil {
+			debug.PrintStack()
+			return nil, err
+		}
+		resourcePool, err = cluster.ResourcePool(context.TODO())
+	} else {
+		resourcePool, err = finder.DefaultResourcePool(context.TODO())
+	}
+
+	if err != nil {
+		debug.PrintStack()
+		return nil, err
+	}
+
+	return resourcePool, nil
+}
+
 func doRegistration(ui packer.Ui, config Config, vmx string, clonerequired bool) error {
 
 	sdkURL, err := url.Parse(fmt.Sprintf("https://%s:%s@%s/sdk",
@@ -384,8 +416,7 @@ func doRegistration(ui packer.Ui, config Config, vmx string, clonerequired bool)
 		return err
 	}
 
-	resourcePool, err := finder.DefaultResourcePool(context.TODO())
-
+	resourcePool, err := getResourcePool(finder, &config, client)
 	if err != nil {
 		return err
 	}
@@ -405,7 +436,7 @@ func doRegistration(ui packer.Ui, config Config, vmx string, clonerequired bool)
 	if err != nil {
 		return err
 	}
-	ui.Message(fmt.Sprintf("Registererd VM %s", vmName))
+	ui.Message(fmt.Sprintf("Registered VM %s", vmName))
 
 	vm, err := finder.VirtualMachine(context.TODO(), vmName)
 
