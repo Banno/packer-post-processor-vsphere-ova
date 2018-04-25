@@ -5,11 +5,11 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/cheggaaa/pb"
-	vmwarecommon "github.com/mitchellh/packer/builder/vmware/common"
-	"github.com/mitchellh/packer/common"
-	"github.com/mitchellh/packer/helper/config"
-	"github.com/mitchellh/packer/packer"
-	"github.com/mitchellh/packer/template/interpolate"
+	vmwarecommon "github.com/hashicorp/packer/builder/vmware/common"
+	"github.com/hashicorp/packer/common"
+	"github.com/hashicorp/packer/helper/config"
+	"github.com/hashicorp/packer/packer"
+	"github.com/hashicorp/packer/template/interpolate"
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/vim25/types"
@@ -24,8 +24,8 @@ import (
 )
 
 var builtins = map[string]string{
-	"mitchellh.virtualbox": "virtualbox",
-	"mitchellh.vmware":     "vmware",
+	"hashicorp.virtualbox": "virtualbox",
+	"hashicorp.vmware":     "vmware",
 }
 
 type Config struct {
