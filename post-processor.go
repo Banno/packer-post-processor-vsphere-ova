@@ -24,8 +24,8 @@ import (
 )
 
 var builtins = map[string]string{
-	"hashicorp.virtualbox": "virtualbox",
-	"hashicorp.vmware":     "vmware",
+	"mitchellh.virtualbox": "virtualbox",
+	"mitchellh.vmware":     "vmware",
 }
 
 type Config struct {
