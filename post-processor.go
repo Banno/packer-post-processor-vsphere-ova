@@ -214,8 +214,20 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 
 	if ova != "" {
 		// Sweet, we've got an OVA, Now it's time to make that baby something we can work with.
-		command := exec.Command("ovftool", "--lax", "--allowAllExtraConfig", fmt.Sprintf("--extraConfig:ethernet0.networkName=%s", p.config.VMNetwork), ova, fmt.Sprintf("%s.vmx", strings.TrimSuffix(ova, ".ova")))
+		var args []string
+		if p.config.RemoveEthernet != "true" {
+			args = append(args,
+				"--allowExtraConfig",
+				fmt.Sprintf("--extraConfig:ethernet0.networkName=%s", p.config.VMNetwork),
+			)
+		}
+		args = append(args,
+			"--lax",
+			ova,
+			fmt.Sprintf("%s.vmx", strings.TrimSuffix(ova, ".ova")),
+		)
 
+		command := exec.Command("ovftool", args...)
 		var ovftoolOut bytes.Buffer
 		command.Stdout = &ovftoolOut
 		if err := command.Run(); err != nil {
