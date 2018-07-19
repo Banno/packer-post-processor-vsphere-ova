@@ -1,41 +1,41 @@
 package main
 
 import (
-  "fmt"
+	"fmt"
 )
 
 const BuilderId = "banno.post-processor.vsphere"
 
 type Artifact struct {
-  Name     string
+	Name     string
 }
 
 func NewArtifact(provider, name string) *Artifact {
-  return &Artifact{
-    Name:     name,
-  }
+	return &Artifact{
+		Name:     name,
+	}
 }
 
 func (*Artifact) BuilderId() string {
-  return BuilderId
+	return BuilderId
 }
 
 func (a *Artifact) Files() []string {
-  return nil
+	return nil
 }
 
 func (a *Artifact) Id() string {
-  return ""
+	return ""
 }
 
 func (a *Artifact) String() string {
-  return fmt.Sprintf("%s", a.Name)
+	return fmt.Sprintf("%s", a.Name)
 }
 
 func (a *Artifact) State(name string) interface{} {
-  return nil
+	return nil
 }
 
 func (a *Artifact) Destroy() error {
-  return nil
+	return nil
 }
