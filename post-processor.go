@@ -42,6 +42,7 @@ type Config struct {
 	RemoveFloppy       string `mapstructure:"remove_floppy"`
 	RemoveOpticalDrive string `mapstructure:"remove_optical_drive"`
 	VirtualHardwareVer string `mapstructure:"virtual_hardware_version"`
+	ResourcePool       string `mapstructure:"resource_pool"`
 	ctx                interpolate.Context
 }
 
@@ -397,7 +398,7 @@ func doRegistration(ui packer.Ui, config Config, vmx string, clonerequired bool)
 		return err
 	}
 
-	resourcePool, err := finder.DefaultResourcePool(context.TODO())
+	resourcePool, err := finder.ResourcePoolOrDefault(context.TODO(), config.ResourcePool)
 
 	if err != nil {
 		return err

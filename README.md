@@ -68,7 +68,13 @@ This is the statement you need to add to your packer json file:
 ]
 ```
 
-You also will need ```"format": "ova"``` in your virtualbox-iso builder for this to function.
+You also will need ```"format": "ova"``` in your virtualbox-iso builder for this to function.a
+
+### Specifying a Specific Resource Pool when Uploading to Vsphere
+
+Add ```"resource_pool": "my_pool"``` to the post-processor config in your packer template. If not specified, the default Resource Pool will be used.
+
+
 
 NOTE: This will produce the default behavior described above, you can avoid steps 3-6 if you remove the Floppy, Optical Drive, and Ethernet devices prior to upload.  See below for how to do this.
 
@@ -92,4 +98,5 @@ Add ```"remove_optical_drive": "true"``` to the post-processor config in your pa
 Add ```"remove_floppy": "true", "remove_ethernet": "true", "remove_optical_drive": "true"``` to the post-processor config in your packer template.
 
 NOTE: This makes the ```"vm_network": "vmware_network_name"``` parameter optional.
+
 
