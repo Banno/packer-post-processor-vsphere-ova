@@ -4,6 +4,14 @@ import (
 	"bytes"
 	"crypto/tls"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"os"
+	"os/exec"
+	"strings"
+	"time"
+
 	"github.com/cheggaaa/pb"
 	vmwarecommon "github.com/hashicorp/packer/builder/vmware/common"
 	"github.com/hashicorp/packer/common"
@@ -14,13 +22,6 @@ import (
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/vim25/types"
 	"golang.org/x/net/context"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"os"
-	"os/exec"
-	"strings"
-	"time"
 )
 
 var builtins = map[string]string{
@@ -43,6 +44,7 @@ type Config struct {
 	RemoveOpticalDrive string `mapstructure:"remove_optical_drive"`
 	VirtualHardwareVer string `mapstructure:"virtual_hardware_version"`
 	ResourcePool       string `mapstructure:"resource_pool"`
+	VMWareGuestOsType  string `mapstructure:"vm_guest_os_type"`
 	ctx                interpolate.Context
 }
 
@@ -130,7 +132,7 @@ func (p *PostProcessor) RemoveFloppy(vmx string, ui packer.Ui) error {
 }
 
 func (p *PostProcessor) RemoveEthernet(vmx string, ui packer.Ui) error {
-	ui.Message(fmt.Sprintf("Removing ethernet0 intercace from %s", vmx))
+	ui.Message(fmt.Sprintf("Removing ethernet0 interface from %s", vmx))
 	vmxData, err := vmwarecommon.ReadVMX(vmx)
 	if err != nil {
 		return err
@@ -159,6 +161,31 @@ func (p *PostProcessor) SetVHardwareVersion(vmx string, ui packer.Ui, hwversion 
 		if strings.Contains(line, "virtualhw.version") {
 			lines[i] = fmt.Sprintf("virtualhw.version = \"%s\"", hwversion)
 		}
+	}
+	output := strings.Join(lines, "\n")
+	err = ioutil.WriteFile(vmx, []byte(output), 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *PostProcessor) SetGuestOs(vmx string, ui packer.Ui, os string) error {
+	vmxContent, err := ioutil.ReadFile(vmx)
+	lines := strings.Split(string(vmxContent), "\n")
+	updated := false
+	guestOsLine := fmt.Sprintf("guestos = \"%s\"", os)
+	for i, line := range lines {
+		if strings.Contains(line, "guestos") {
+			lines[i] = guestOsLine
+			ui.Message(fmt.Sprintf("Updated the OS type in the vmx to '%s'", os))
+			updated = true
+		}
+	}
+	if updated == false {
+		lines = append(lines, guestOsLine)
+		ui.Message(fmt.Sprintf("Append the OS type in the vmx to '%s'", os))
 	}
 	output := strings.Join(lines, "\n")
 	err = ioutil.WriteFile(vmx, []byte(output), 0644)
@@ -216,12 +243,12 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 	if ova != "" {
 		// Sweet, we've got an OVA, Now it's time to make that baby something we can work with.
 		var args []string
-		if p.config.RemoveEthernet != "true" {
-			args = append(args,
-				"--allowExtraConfig",
-				fmt.Sprintf("--extraConfig:ethernet0.networkName=%s", p.config.VMNetwork),
-			)
-		}
+		//if p.config.RemoveEthernet != "true" {
+		//	args = append(args,
+		//		"--allowExtraConfig",
+		//		fmt.Sprintf("--extraConfig:ethernet0.networkName=%s", p.config.VMNetwork),
+		//	)
+		//}
 		args = append(args,
 			"--lax",
 			ova,
@@ -262,6 +289,12 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 	if p.config.VirtualHardwareVer != "" {
 		if err := p.SetVHardwareVersion(vmx, ui, p.config.VirtualHardwareVer); err != nil {
 			return nil, false, fmt.Errorf("Setting the Virtual Hardware Version in VMX failed!")
+		}
+	}
+
+	if p.config.VMWareGuestOsType != "" {
+		if err := p.SetGuestOs(vmx, ui, p.config.VMWareGuestOsType); err != nil {
+			return nil, false, fmt.Errorf("Setting the Guest OS in VMX failed!")
 		}
 	}
 
@@ -386,12 +419,11 @@ func doRegistration(ui packer.Ui, config Config, vmx string, clonerequired bool)
 	}
 
 	finder := find.NewFinder(client.Client, false)
-       datacenter, err := finder.DatacenterOrDefault(context.TODO(), config.Datacenter)
+	datacenter, err := finder.DatacenterOrDefault(context.TODO(), config.Datacenter)
 	if err != nil {
 		return err
 	}
-       finder.SetDatacenter(datacenter)
-
+	finder.SetDatacenter(datacenter)
 
 	folders, err := datacenter.Folders(context.TODO())
 	if err != nil {
@@ -536,3 +568,4 @@ func doRegistration(ui packer.Ui, config Config, vmx string, clonerequired bool)
 
 	return nil
 }
+
