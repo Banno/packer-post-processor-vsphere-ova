@@ -189,9 +189,9 @@ func (p *PostProcessor) RemoveOpticalDrive(vmx string, ui packer.Ui) error {
 	return nil
 }
 
-func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (packer.Artifact, bool, error) {
+func (p *PostProcessor) PostProcess(context context.Context, ui packer.Ui, artifact packer.Artifact) (packer.Artifact, bool, bool, error) {
 	if _, ok := builtins[artifact.BuilderId()]; !ok {
-		return nil, false, fmt.Errorf("Unknown artifact type, can't build box: %s", artifact.BuilderId())
+		return nil, false, false, fmt.Errorf("Unknown artifact type, can't build box: %s", artifact.BuilderId())
 	}
 
 	ova := ""
@@ -209,7 +209,7 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 	}
 
 	if ova == "" && (vmx == "" || vmdk == "") {
-		return nil, false, fmt.Errorf("ERROR: Neither OVA or VMX/VMDK were found!")
+		return nil, false, false, fmt.Errorf("ERROR: Neither OVA or VMX/VMDK were found!")
 	}
 
 	if ova != "" {
@@ -231,7 +231,7 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 		var ovftoolOut bytes.Buffer
 		command.Stdout = &ovftoolOut
 		if err := command.Run(); err != nil {
-			return nil, false, fmt.Errorf("Failed: %s\nStdout: %s", err, ovftoolOut.String())
+			return nil, false, false, fmt.Errorf("Failed: %s\nStdout: %s", err, ovftoolOut.String())
 		}
 
 		ui.Message(fmt.Sprintf("%s", ovftoolOut.String()))
@@ -242,25 +242,25 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 
 	if p.config.RemoveEthernet == "true" {
 		if err := p.RemoveEthernet(vmx, ui); err != nil {
-			return nil, false, fmt.Errorf("Removing ethernet0 interface from VMX failed!")
+			return nil, false, false, fmt.Errorf("Removing ethernet0 interface from VMX failed!")
 		}
 	}
 
 	if p.config.RemoveFloppy == "true" {
 		if err := p.RemoveFloppy(vmx, ui); err != nil {
-			return nil, false, fmt.Errorf("Removing floppy drive from VMX failed!")
+			return nil, false, false, fmt.Errorf("Removing floppy drive from VMX failed!")
 		}
 	}
 
 	if p.config.RemoveOpticalDrive == "true" {
 		if err := p.RemoveOpticalDrive(vmx, ui); err != nil {
-			return nil, false, fmt.Errorf("Removing CD/DVD Drive from VMX failed!")
+			return nil, false, false, fmt.Errorf("Removing CD/DVD Drive from VMX failed!")
 		}
 	}
 
 	if p.config.VirtualHardwareVer != "" {
 		if err := p.SetVHardwareVersion(vmx, ui, p.config.VirtualHardwareVer); err != nil {
-			return nil, false, fmt.Errorf("Setting the Virtual Hardware Version in VMX failed!")
+			return nil, false, false, fmt.Errorf("Setting the Virtual Hardware Version in VMX failed!")
 		}
 	}
 
@@ -289,7 +289,7 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 		vmdk)
 
 	if err != nil {
-		return nil, false, fmt.Errorf("Failed: %s", err)
+		return nil, false, false, fmt.Errorf("Failed: %s", err)
 	}
 
 	ui.Message(fmt.Sprintf("Uploaded %s", vmdk))
@@ -306,7 +306,7 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 		vmx)
 
 	if err != nil {
-		return nil, false, fmt.Errorf("Failed: %s", err)
+		return nil, false, false, fmt.Errorf("Failed: %s", err)
 	}
 
 	ui.Message(fmt.Sprintf("Uploaded %s", vmx))
@@ -314,11 +314,11 @@ func (p *PostProcessor) PostProcess(ui packer.Ui, artifact packer.Artifact) (pac
 	err = doRegistration(ui, p.config, vmx, clonerequired)
 
 	if err != nil {
-		return nil, false, fmt.Errorf("Failed: %s", err)
+		return nil, false, false, fmt.Errorf("Failed: %s", err)
 	}
 	ui.Message("Uploaded and registered to VMware")
 
-	return artifact, false, nil
+	return artifact, false, false, nil
 }
 
 func doUpload(ui packer.Ui, url string, file string) error {
@@ -385,12 +385,11 @@ func doRegistration(ui packer.Ui, config Config, vmx string, clonerequired bool)
 	}
 
 	finder := find.NewFinder(client.Client, false)
-       datacenter, err := finder.DatacenterOrDefault(context.TODO(), config.Datacenter)
+	datacenter, err := finder.DatacenterOrDefault(context.TODO(), config.Datacenter)
 	if err != nil {
 		return err
 	}
-       finder.SetDatacenter(datacenter)
-
+	finder.SetDatacenter(datacenter)
 
 	folders, err := datacenter.Folders(context.TODO())
 	if err != nil {
