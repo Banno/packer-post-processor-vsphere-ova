@@ -4,6 +4,14 @@ import (
 	"bytes"
 	"crypto/tls"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"os"
+	"os/exec"
+	"strings"
+	"time"
+
 	"github.com/cheggaaa/pb"
 	vmwarecommon "github.com/hashicorp/packer/builder/vmware/common"
 	"github.com/hashicorp/packer/common"
@@ -14,13 +22,6 @@ import (
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/vim25/types"
 	"golang.org/x/net/context"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"os"
-	"os/exec"
-	"strings"
-	"time"
 )
 
 var builtins = map[string]string{
