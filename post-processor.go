@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/cheggaaa/pb"
+	"github.com/hashicorp/hcl/v2/hcldec"
 	vmwarecommon "github.com/hashicorp/packer/builder/vmware/common"
 	"github.com/hashicorp/packer/common"
 	"github.com/hashicorp/packer/helper/config"
@@ -48,6 +49,10 @@ type Config struct {
 
 type PostProcessor struct {
 	config Config
+}
+
+func (p *PostProcessor) ConfigSpec() hcldec.ObjectSpec {
+	return nil
 }
 
 func (p *PostProcessor) Configure(raws ...interface{}) error {
