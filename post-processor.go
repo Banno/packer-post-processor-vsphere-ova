@@ -4,7 +4,16 @@ import (
 	"bytes"
 	"crypto/tls"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"os"
+	"os/exec"
+	"strings"
+	"time"
+
 	"github.com/cheggaaa/pb"
+	"github.com/hashicorp/hcl/v2/hcldec"
 	vmwarecommon "github.com/hashicorp/packer/builder/vmware/common"
 	"github.com/hashicorp/packer/common"
 	"github.com/hashicorp/packer/helper/config"
@@ -14,13 +23,6 @@ import (
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/vim25/types"
 	"golang.org/x/net/context"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"os"
-	"os/exec"
-	"strings"
-	"time"
 )
 
 var builtins = map[string]string{
@@ -47,6 +49,10 @@ type Config struct {
 
 type PostProcessor struct {
 	config Config
+}
+
+func (p *PostProcessor) ConfigSpec() hcldec.ObjectSpec {
+	return nil
 }
 
 func (p *PostProcessor) Configure(raws ...interface{}) error {
