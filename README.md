@@ -93,3 +93,6 @@ Add ```"remove_floppy": "true", "remove_ethernet": "true", "remove_optical_drive
 
 NOTE: This makes the ```"vm_network": "vmware_network_name"``` parameter optional.
 
+### Specifying a Resource Pool when Uploading to Vsphere
+
+Add ```"resource_pool": "my_pool"``` to the post-processor config in your packer template. If not specified, the default Resource Pool will be used.
